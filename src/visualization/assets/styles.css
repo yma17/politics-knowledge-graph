@@ -1,0 +1,47 @@
+* {
+    padding: 0;
+    margin: 0;
+}
+
+#banner {
+    height: 4rem;
+    width: 100%;
+    background-color: blue;
+    color: white;
+    display: flex;
+}
+
+#topics {
+    background-color: green;
+    height: 50%;
+}
+
+#communities {
+    background-color: red;
+    height: 50%;
+}
+
+#details {
+    background-color: yellow;
+    height: 18rem;
+}
+
+#title {
+    padding-left: 2rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+#footer {
+    width: 100%;
+    background-color: blue;
+    height: 8rem;
+}
+
+#parent_container {
+    height: 50rem;
+}
+
+.container {
+    width: 100%;
+}
