@@ -34,7 +34,12 @@ join = os.path.join
 
 
 ### LOAD IN DATA ###
-# TODO: bill & bill text
+df_bills_house = pd.read_csv("../../data/house_bills.csv", sep='\x01')
+df_bills_sen = pd.read_csv("../../data/senate_bills.csv", sep='\x01')
+
+df_topics_house = pd.read_csv("../../data/house_bills_topics_subjects.tsv", sep = "\t")
+df_topics_sen = pd.read_csv("../../data/senate_bills_topics_subjects.tsv", sep = "\t")
+
 df_committee_house = pd.read_csv("../../data/house_committees_v2.csv")
 df_committee_sen = pd.read_csv("../../data/senate_committees_v2.csv")
 df_committee_joint = pd.read_csv("../../data/joint_committees.csv")
@@ -47,7 +52,7 @@ with open("../../data/joint_committee_memberships.json", "r") as f:
     joint_cm = json.load(f)
 
 df_lobbyist = pd.concat([
-    pd.read_csv(fname) for fname in glob("../../data/contributions_*.csv")])
+    pd.read_csv(fname) for fname in glob("../../data/contributions_*.csv")]) # don't use 2021
 
 df_member_house = pd.read_csv("../../data/house_116.csv")
 df_member_sen = pd.read_csv("../../data/senate_116.csv")
@@ -55,12 +60,12 @@ df_member_sen = pd.read_csv("../../data/senate_116.csv")
 df_vote_house = pd.read_csv("../../data/house_votes.csv", dtype=str)
 df_vote_house['number'] = df_vote_house['number'].astype(int)
 df_vote_house['session'] = df_vote_house['session'].astype(int)
-df_vote_house = df_vote_house[df_vote_house["session"] != 2021]
+df_vote_house = df_vote_house[df_vote_house["session"] != 2021] # filter out 2021
 df_vote_house = df_vote_house.sort_values(by=["session", "number"])
 df_vote_sen = pd.read_csv("../../data/senate_votes.csv", dtype=str)
 df_vote_sen['number'] = df_vote_sen['number'].astype(int)
 df_vote_sen['session'] = df_vote_sen['session'].astype(int)
-df_vote_sen = df_vote_sen[df_vote_sen["session"] != 2021]
+df_vote_sen = df_vote_sen[df_vote_sen["session"] != 2021] # filter out 2021
 df_vote_sen = df_vote_sen.sort_values(by=["session", "number"])
 
 df_node = pd.read_csv("../../data/nodes.csv")
@@ -221,7 +226,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "committee_basedin_chamber.csv"), index=False)
 
 # Vote -> [on ] -> Bill
-pass  # TODO
+pass # TODO
 
 # Vote -> [occurred in ] -> Chamber
 edge_data = {"src_nid": [], "tgt_nid": []}
@@ -235,10 +240,34 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "vote_occurredin_chamber.csv"), index=False)
 
 # Member -> [is a sponsor of ] -> Bill
-pass  # TODO
+edge_data = {"src_nid": [], "tgt_nid": []}
+for _, row in df_bills_house.iterrows():
+    edge_data["src_nid"].append(nkey2nid["member_"+row["sponsor_id"]])
+    edge_data["tgt_nid"].append(nkey2nid["bill_"+row["bill_id"]])
+for _, row in df_bills_sen.iterrows():
+    edge_data["src_nid"].append(nkey2nid["member_"+row["sponsor_id"]])
+    edge_data["tgt_nid"].append(nkey2nid["bill_"+row["bill_id"]])
+pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
+    join(EDGE_PATH, "member_sponsorof_bill.csv"), index=False)
 
 # Member -> [is a cosponsor of ] -> Bill
-pass  # TODO
+edge_data = {"src_nid": [], "tgt_nid": []}
+for _, row in df_bills_house.iterrows():
+    cosponsor = row['cosponsor_id']
+    if cosponsor != "[]": # String for Empty list
+        cosponsor = cosponsor.replace('[','').replace(']','').replace("'",'').replace(" ", '').split(',') # Cosponsors in str format. Split and transform into list
+        for c in cosponsor:
+            edge_data["src_nid"].append(nkey2nid["member_"+c])
+            edge_data["tgt_nid"].append(nkey2nid["bill_"+row["bill_id"]])
+for _, row in df_bills_sen.iterrows():
+    cosponsor = row['cosponsor_id']
+    if cosponsor != "[]": # String for Empty list
+        cosponsor = cosponsor.replace('[','').replace(']','').replace("'",'').replace(" ", '').split(',') # Cosponsors in str format. Split and transform into list
+        for c in cosponsor:
+            edge_data["src_nid"].append(nkey2nid["member_"+c])
+            edge_data["tgt_nid"].append(nkey2nid["bill_"+row["bill_id"]])
+pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
+    join(EDGE_PATH, "member_cosponsorof_bill.csv"), index=False)
 
 # # Vote -> [occurred before ] -> Vote
 # edge_data = {"src_nid": [], "tgt_nid": []}
@@ -256,10 +285,32 @@ pass  # TODO
 #     join(EDGE_PATH, "vote_occurredbefore_vote.csv"), index=False)
 
 # Bill -> [discusses ] -> Topic
-pass  # TODO
+# TODO
+edge_data = {"src_nid": [], "tgt_nid": []}
+for _, row in df_topics_house.iterrows():
+    if (pd.notnull(row['topic'])):
+        edge_data["src_nid"].append(nkey2nid["bill_"+row['bill_id']])
+        edge_data["tgt_nid"].append(nkey2nid["topic_"+row["topic"]])
+for _, row in df_topics_sen.iterrows():
+    if (pd.notnull(row['topic'])):
+        edge_data["src_nid"].append(nkey2nid["bill_"+row['bill_id']])
+        edge_data["tgt_nid"].append(nkey2nid["topic_"+row["topic"]])
+pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
+    join(EDGE_PATH, "bill_discusses_topic.csv"), index=False)
+
 
 # Topic -> [relates to ] -> Topic
-pass  # TODO
+edge_data = {"src_nid": [], "tgt_nid": []}
+for _, row in df_topics_house.iterrows():
+    if ((pd.notnull(row['topic'])) and (pd.notnull(row['subject']))):
+        edge_data["src_nid"].append(nkey2nid["topic_"+row['subject'].strip()])
+        edge_data["tgt_nid"].append(nkey2nid["topic_"+row["topic"].strip()])
+for _, row in df_topics_sen.iterrows():
+    if ((pd.notnull(row['topic'])) and (pd.notnull(row['subject']))):
+        edge_data["src_nid"].append(nkey2nid["topic_"+row['subject'].strip()])
+        edge_data["tgt_nid"].append(nkey2nid["topic_"+row["topic"].strip()])
+pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
+    join(EDGE_PATH, "topic_subtopicof_topic.csv"), index=False)
 
 # Committee -> [focuses on ] -> Topic
 pass  # TODO

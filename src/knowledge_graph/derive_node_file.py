@@ -5,7 +5,7 @@ The node types are as follows:
 - Political party
 - Chamber
 - Bill
-- Topic
+- Topic (Includes SubTopic too)
 - Committee
 - Subcommittee
 - Member
@@ -19,7 +19,12 @@ import os
 join = os.path.join
 
 ### LOAD IN DATA ###
-# TODO: bill & bill text
+df_bills_house = pd.read_csv("../../data/house_bills.csv", sep='\x01')
+df_bills_sen = pd.read_csv("../../data/senate_bills.csv", sep='\x01')
+
+df_topics_house = pd.read_csv("../../data/house_topics_subjects.tsv", sep = "\t")
+df_topics_sen = pd.read_csv("../../data/senate_topics_subjects.tsv", sep = "\t")
+
 df_committee_house = pd.read_csv("../../data/house_committees_v2.csv")
 df_committee_sen = pd.read_csv("../../data/senate_committees_v2.csv")
 df_committee_joint = pd.read_csv("../../data/joint_committees.csv")
@@ -35,6 +40,7 @@ df_vote_house['number'] = df_vote_house['number'].astype(int)
 df_vote_house['session'] = df_vote_house['session'].astype(int)
 df_vote_house = df_vote_house[df_vote_house["session"] != 2021]  # filter out 2021
 df_vote_house = df_vote_house.sort_values(by=["session", "number"])
+
 df_vote_sen = pd.read_csv("../../data/senate_votes.csv", dtype=str)
 df_vote_sen['number'] = df_vote_sen['number'].astype(int)
 df_vote_sen['session'] = df_vote_sen['session'].astype(int)
@@ -64,10 +70,24 @@ for item in chamber_set:
     node_data["ntype_name"].append("chamber" + "_" + item)
 
 # Bill
-pass  # TODO
+bill_set = list(set(df_bills_house['bill_id'].to_list() +
+                df_bills_sen['bill_id'].to_list()))
+bill_set.sort()
+for item in bill_set:
+    node_data["nid"].append(len(node_data["nid"]))
+    node_data["ntype"].append("bill")
+    node_data["nname"].append(item)
+    node_data["ntype_name"].append("bill" + "_" + item)
 
-# Topic
-pass  # TODO
+# Topic (includes subtopics)
+topic_set = list(set(df_topics_house['topic'].str.strip().to_list() + df_topics_sen['topic'].str.strip().to_list() +
+                df_topics_house['subject'].str.strip().to_list() + df_topics_sen['subject'].str.strip().to_list()))
+topic_set.sort()
+for item in topic_set:
+    node_data["nid"].append(len(node_data["nid"]))
+    node_data["ntype"].append("topic")
+    node_data["nname"].append(item)
+    node_data["ntype_name"].append("topic" + "_" + item)
 
 # Committee
 committee_set = list(set(df_committee_house["name_x"].to_list() +
@@ -126,5 +146,7 @@ for item in lobbyist_set:
     node_data["nname"].append(item)
     node_data["ntype_name"].append("lobbyist" + "_" + item)
 
+
+# Save the node data into csv file
 NODE_PATH = "../../data/nodes.csv"
 pd.DataFrame(node_data).to_csv(NODE_PATH, index=False)
