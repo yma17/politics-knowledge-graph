@@ -6,24 +6,32 @@
 #banner {
     height: 4rem;
     width: 100%;
-    background-color: blue;
+    background-color: #00283D;
     color: white;
     display: flex;
 }
 
+#title {
+    padding-right: 6rem;
+}
+
 #topics {
-    background-color: green;
-    height: 50%;
+    background-color: #fdfaf4;
+    grid-column: 1 / 2;
+    grid-row: 1 / 2;
 }
 
 #communities {
-    background-color: red;
-    height: 50%;
+    background-color: #e3ebf0;
+    grid-column: 2 / 3;
+    grid-row: 1 / 2;
 }
 
 #details {
-    background-color: yellow;
-    height: 18rem;
+    background-color: #fffafa;
+    grid-column: 1 / 3;
+    grid-row: 2 / 3;
+    border-top: 3px solid #780000;
 }
 
 #title {
@@ -34,14 +42,39 @@
 
 #footer {
     width: 100%;
-    background-color: blue;
+    background-color: #00283D;
     height: 8rem;
 }
 
 #parent_container {
     height: 50rem;
+    display: grid;
+    grid-template-rows: 50% 50%;
+    grid-template-columns: 50% 50%;
+    width: 100%;
 }
 
 .container {
     width: 100%;
+}
+
+.header_element {
+   padding-top: 1.5rem; 
+   padding-right: 1rem;
+}
+
+#topic_dropdown {
+    padding-top: 1rem;
+    color: #5A5A5A;
+    width: 10%;
+}
+
+#help {
+    padding-left: 45%;
+    font-size: large;
+}
+
+#about {
+    padding-left: 2rem;
+    font-size: large;
 }
