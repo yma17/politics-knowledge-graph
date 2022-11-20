@@ -70,10 +70,16 @@ for item in chamber_set:
     node_data["ntype_name"].append("chamber" + "_" + item)
 
 # Bill
-bill_set = list(set(df_bills_house['bill_id'].to_list() +
-                df_bills_sen['bill_id'].to_list()))
-bill_set.sort()
-for item in bill_set:
+bill_set_house = list(set(df_bills_house['bill_id'].to_list()))
+bill_set_senate = list(set(df_bills_sen['bill_id'].to_list()))
+bill_set_house.sort(key=lambda x: int(''.join(filter(str.isdigit, x))))
+bill_set_senate.sort(key=lambda x: int(''.join(filter(str.isdigit, x))))
+for item in bill_set_house:
+    node_data["nid"].append(len(node_data["nid"]))
+    node_data["ntype"].append("bill")
+    node_data["nname"].append(item)
+    node_data["ntype_name"].append("bill" + "_" + item)
+for item in bill_set_senate:
     node_data["nid"].append(len(node_data["nid"]))
     node_data["ntype"].append("bill")
     node_data["nname"].append(item)

@@ -14,11 +14,8 @@ The SPO relations (aka edge types) are as follows:
 - Vote -> [occurred in ] -> Chamber
 - Member -> [is a sponsor of ] -> Bill
 - Member -> [is a cosponsor of ] -> Bill
-<11/12/22: removed for now> - Vote -> [occurred before ] -> Vote
 - Bill -> [discusses ] -> Topic
 - Topic -> [relates to ] -> Topic
-- Committee -> [focuses on ] -> Topic
-- Subcommittee -> [focuses on ] -> Topic
 - Lobbyist -> [paid money to ] -> Member 
 """
 
@@ -104,6 +101,7 @@ EDGE_PATH = "../../data/edges"
 Path(EDGE_PATH).mkdir(parents=True, exist_ok=True)
 
 # Member -> [a member of ] -> Political party
+print("Member -> [a member of ] -> Political party")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for df in [df_member_house, df_member_sen]:
     for _, row in df.iterrows():
@@ -113,6 +111,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "member_memberof_party.csv"), index=False)
 
 # Member -> [a member of ] -> Chamber
+print("Member -> [a member of ] -> Chamber")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for _, row in df_member_house.iterrows():
     edge_data["src_nid"].append(nkey2nid["member_"+row["id"]])
@@ -125,6 +124,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
 
 # Member -> [vote “yea” on ] -> Vote
 # Member -> [vote “nay” on ] -> Vote
+print("Member -> [vote \“yea\”/\"nay\" on ] -> Vote")
 edge_data_yea = {"src_nid": [], "tgt_nid": []}
 edge_data_nay = {"src_nid": [], "tgt_nid": []}
 # (house votes)
@@ -162,6 +162,7 @@ pd.DataFrame(edge_data_nay).drop_duplicates().sort_values(by=['src_nid', 'tgt_ni
     join(EDGE_PATH, "member_votednayon_vote.csv"), index=False)
 
 # Member -> [is a member of ] -> Committee
+print("Member -> [is a member of ] -> Committee")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for cm in [house_cm, senate_cm, joint_cm]:
     committees = list(cm.keys())
@@ -175,6 +176,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "member_memberof_committee.csv"), index=False)
 
 # Member -> [is a member of ] -> Subcommittee
+print("Member -> [is a member of ] -> Subcommittee")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for cm in [house_cm, senate_cm]:
     committees = list(cm.keys())
@@ -190,6 +192,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "member_memberof_subcommittee.csv"), index=False)
 
 # Subcommittee -> [is part of ] -> Committee
+print("Subcommittee -> [is part of ] -> Committee")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for cm in [house_cm, senate_cm]:
     committees = list(cm.keys())
@@ -204,6 +207,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "subcommittee_partof_committee.csv"), index=False)
 
 # Committee -> [is based in ] -> Chamber
+print("Committee -> [is based in ] -> Chamber")
 edge_data = {"src_nid": [], "tgt_nid": []}
 committees = list(house_cm.keys())
 for c in committees:
@@ -226,9 +230,55 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "committee_basedin_chamber.csv"), index=False)
 
 # Vote -> [on ] -> Bill
-pass # TODO
+print("Vote -> [on ] -> Bill")
+edge_data = {"src_nid": [], "tgt_nid": []}
+HOUSE_BILL_KEYWORDS = [" H R ", " H RES ", " H.R. ", " H.Res. "]
+SENATE_BILL_KEYWORDS = [" S ", " S. ", " S.Res. "]
+def extract_bill_id_from_vote(vote_question):
+    #print(vote_question)
+    bill_keywords = HOUSE_BILL_KEYWORDS + SENATE_BILL_KEYWORDS
+    ignore_keywords = [" H.J.Res. ", " H.J. Res ", " H J RES ", " S.J.Res. ", " S.J. Res ", " S J RES "]
+    matched_keyword, matched_keyword_index = None, len(vote_question)
+    for keyword in bill_keywords:
+        if keyword in vote_question:
+            keyword_index = vote_question.index(keyword)
+            if keyword_index < matched_keyword_index:
+                matched_keyword_index = keyword_index
+                matched_keyword = keyword
+    if matched_keyword is None:
+        return None, None
+    for keyword2 in ignore_keywords:
+        if keyword2 in vote_question and vote_question.index(keyword2) <= keyword_index:
+            return None, None
+    i = matched_keyword_index + len(matched_keyword)
+    j = i + 1
+    while j < len(vote_question) and vote_question[i:j].isnumeric():
+        j += 1
+    #print(matched_keyword, vote_question[i:j])
+    try:
+        return matched_keyword, int(vote_question[i:j])
+    except ValueError:
+        return None, None
+df_vote_all = pd.concat([df_vote_house, df_vote_sen])
+for _, row in df_vote_all.iterrows():
+    kw, n = extract_bill_id_from_vote(row["question"])
+    if kw is None:
+        continue
+    src_nid = nkey2nid["vote_"+row["vote_id"]]
+    try:   
+        if kw in HOUSE_BILL_KEYWORDS:
+            tgt_nid = nkey2nid["bill_"+"hr"+str(n)+"-116"]
+        else:  # kw in SENATE_BILL_KEYWORDS
+            tgt_nid = nkey2nid["bill_"+"s"+str(n)+"-116"]
+    except KeyError:
+        continue
+    edge_data["src_nid"].append(src_nid)
+    edge_data["tgt_nid"].append(tgt_nid)
+pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
+    join(EDGE_PATH, "vote_on_bill.csv"), index=False)
 
 # Vote -> [occurred in ] -> Chamber
+print("Vote -> [occurred in ] -> Chamber")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for _, row in df_vote_house.iterrows():
     edge_data["src_nid"].append(nkey2nid["vote_"+row["vote_id"]])
@@ -240,6 +290,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "vote_occurredin_chamber.csv"), index=False)
 
 # Member -> [is a sponsor of ] -> Bill
+print("Member -> [is a sponsor of ] -> Bill")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for _, row in df_bills_house.iterrows():
     edge_data["src_nid"].append(nkey2nid["member_"+row["sponsor_id"]])
@@ -251,6 +302,7 @@ pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid'])
     join(EDGE_PATH, "member_sponsorof_bill.csv"), index=False)
 
 # Member -> [is a cosponsor of ] -> Bill
+print("Member -> [is a cosponsor of ] -> Bill")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for _, row in df_bills_house.iterrows():
     cosponsor = row['cosponsor_id']
@@ -269,23 +321,8 @@ for _, row in df_bills_sen.iterrows():
 pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
     join(EDGE_PATH, "member_cosponsorof_bill.csv"), index=False)
 
-# # Vote -> [occurred before ] -> Vote
-# edge_data = {"src_nid": [], "tgt_nid": []}
-# df_node_vote_house = df_node[(df_node["ntype"] == "vote") & (df_node["nname"].isin(df_vote_house["vote_id"]))]
-# ntype_name_list = df_node_vote_house["ntype_name"].to_list()
-# for i in range(1, len(ntype_name_list)):
-#     edge_data["src_nid"].append(nkey2nid[ntype_name_list[i-1]])
-#     edge_data["tgt_nid"].append(nkey2nid[ntype_name_list[i]])
-# df_node_vote_sen = df_node[(df_node["ntype"] == "vote") & (df_node["nname"].isin(df_vote_sen["vote_id"]))]
-# ntype_name_list = df_node_vote_sen["ntype_name"].to_list()
-# for i in range(1, len(ntype_name_list)):
-#     edge_data["src_nid"].append(nkey2nid[ntype_name_list[i-1]])
-#     edge_data["tgt_nid"].append(nkey2nid[ntype_name_list[i]])
-# pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
-#     join(EDGE_PATH, "vote_occurredbefore_vote.csv"), index=False)
-
 # Bill -> [discusses ] -> Topic
-# TODO
+print("Bill -> [discusses ] -> Topic")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for _, row in df_topics_house.iterrows():
     if (pd.notnull(row['topic'])):
@@ -298,8 +335,8 @@ for _, row in df_topics_sen.iterrows():
 pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
     join(EDGE_PATH, "bill_discusses_topic.csv"), index=False)
 
-
 # Topic -> [relates to ] -> Topic
+print("Topic -> [relates to ] -> Topic")
 edge_data = {"src_nid": [], "tgt_nid": []}
 for _, row in df_topics_house.iterrows():
     if ((pd.notnull(row['topic'])) and (pd.notnull(row['subject']))):
@@ -312,13 +349,8 @@ for _, row in df_topics_sen.iterrows():
 pd.DataFrame(edge_data).drop_duplicates().sort_values(by=['src_nid', 'tgt_nid']).to_csv(
     join(EDGE_PATH, "topic_subtopicof_topic.csv"), index=False)
 
-# Committee -> [focuses on ] -> Topic
-pass  # TODO
-
-# Subcommittee -> [focuses on ] -> Topic
-pass  # TODO
-
 # Lobbyist -> [paid money to ] -> Member
+print("Lobbyist -> [paid money to ] -> Member")
 edge_data = {"src_nid": [], "tgt_nid": []}
 pbar = tqdm(total=len(df_lobbyist))
 for _, row in df_lobbyist.iterrows():
