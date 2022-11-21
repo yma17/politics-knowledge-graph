@@ -11,8 +11,10 @@ app.title = "REP-G: REpresenting Politics with Graphs"
 server = app.server
 
 def show_instructions():
-    # We should definitely have a popup on load that shows how to use the app
+    # TODO: add a popup on load that shows how to use the app
     # so people don't get lost in the multiple layouts
+    # See this example from Dash:
+    # https://github.com/plotly/dash-sample-apps/blob/main/apps/dash-manufacture-spc-dashboard/app.py
     return
 
 # --- Topic Graph Rendering ---
@@ -41,11 +43,14 @@ def get_topic_graph_elements(current_topic = "Families"):
 
     Inputs
     -----
-    n_clicks - a fake input to test this callback function
-    
-    current_topic - the topic we want a subgraph for, input as a string
+    current_topic - the topic we want a subgraph for, input as a string. Value is the
+    current selected topic in the "topic_dropdown" element.
 
     Returns:
+    graph - a list of dictionaries containing data for a Dash Cytoscape graph
+
+    See examples of this format here:
+    https://dash.plotly.com/cytoscape
     """
     if current_topic is None:
         raise PreventUpdate
@@ -54,10 +59,10 @@ def get_topic_graph_elements(current_topic = "Families"):
     topic_nid = topic_df["top_nid"].iloc[0]
     nodes = [{'data': {'id': str(topic_nid), 'label': current_topic}}]
     edges = []
-    i = 0
-    for row in topic_df.itertuples():
-        # For now, this is limited to avoid the screen being overwhelmed
-        if i > 10:
+    node_limit = 10
+    for i, row in enumerate(topic_df.itertuples()):
+        # This is limited to avoid the screen being overwhelmed
+        if i > node_limit:
             break
         # Creates nodes in the following format:
         # {'data': {'id': 'one', 'label': 'Node 1'}}
@@ -67,7 +72,6 @@ def get_topic_graph_elements(current_topic = "Families"):
         # {'data': {'source': 'one', 'target': 'two'}}
         edge = {'data': {'source': str(row[1]), 'target': str(row[2])}}
         edges.append(edge)
-        i += 1
     graph = nodes + edges
     return graph
 
@@ -75,9 +79,19 @@ def get_topic_graph_elements(current_topic = "Families"):
     Output("topics", "children"),
     Input("topic_graph_data", "data")
 )
-def render_topic_graph(graph_data):
+def render_topic_graph(graph_data) -> list:
     """
     Renders the subgraph containing topics from the knowledge graph
+
+    Parameters
+    ---
+    graph_data - The graph elements generated in the get_topic_graph_elements function and
+    stored in the "topic_graph" dash.dcc.Store() element. This is updated whenever the topic
+    chosen in the "topic_dropdown" element is changed.
+
+    Returns
+    ---
+    topic_div - A list of dash elements that will be children of the "topics" div element
     """
     graph = cyto.Cytoscape(
         elements=graph_data,
@@ -107,9 +121,11 @@ def render_topic_graph(graph_data):
     Input("topic_graph", "mouseoverNodeData"),
     prevent_initial_call=True
 )
-def generate_topic_graph_stylesheet(node):
+def generate_topic_graph_stylesheet(node) -> list:
     """
-    Returns a dictionary containing stylesheet elements for the Cytoscape graph.
+    Returns a dictionary containing stylesheet elements for the Dash Cytoscape topic graph.
+    The "node_hover_style" updates the style of the currently selected node, passed in by the
+    "topic_graph"s "mouseoverNodeData" element.
 
     Parameters
     ---
@@ -124,6 +140,10 @@ def generate_topic_graph_stylesheet(node):
 
     Finally, a helpful example:
     https://github.com/plotly/dash-cytoscape/blob/master/usage-stylesheet.py
+    
+    Returns
+    ---
+    default_stylesheet - a list of stylesheet elements in dictionary format
     """
     default_stylesheet = [
             {
@@ -158,20 +178,40 @@ def get_party_color(party_polarity):
 
 def render_community_graph():
     """
-    Renders the subgraph of communities for the current topic in the knowledge graph
+    Renders the subgraph of communities (clusters) for the current topic in the knowledge graph
+
+    This is a Cytoscape element with nodes representing each cluster and no edges.
+
+    Parameters
+    ---
+    None
+
+    Returns
+    ---
+    community_div - a dash.html.Div() element containing the heading and Cytoscape element for
+    the currently selected subgraph of topics
     """
-    community_div = dash.html.Div([
-        dash.html.H2("Topic Clusters", className="graph_title"),
-        get_clusters("Families")], id="communities", className="container")
+    community_div = dash.html.Div(get_clusters(), id="communities", className="container")
     return community_div
 
 @app.callback(
+    # TODO: make this function actually use the topic to filter and retrieve data
     Output("communities", "children"),
     Input("topic_dropdown", "value"),
     prevent_initial_call=True
 )
-def get_clusters(topic):
-    # To render the clusters, I just made some nodes of various sizes?
+def get_clusters(topic=None):
+    """
+    Retrieves the cluster data from the backend for the selected topic.
+
+    Parameters
+    ---
+
+    TODO: Implement this function
+    It should retrieve stored cluster data and format it to have the required data keys given in the
+    stylesheet (size, color).
+    """
+    cluster_elem = [dash.html.H2("Topic Clusters", className="graph_title")]
     cluster_graph = cyto.Cytoscape(elements=test_clusters, style={'width': '100%', 'height': '90%'},
                                     stylesheet=[
                                         {
@@ -183,23 +223,37 @@ def get_clusters(topic):
                                             }
                                         }
                                     ])
-    return cluster_graph
-
+    cluster_elem.append(cluster_graph)
+    return cluster_elem
 # --- Get and display cluster details ---
 
 def render_community_details(cluster=None):
     """
     Renders community details (lobbyists, legislor relationships) for the currently selected community 
     in the knowledge graph
+
+    TODO: Implement functions to retrieve appropriate data/statistics (get_cluster_people() and get_cluster_stats())
+    Currently these just have placeholder/dummy data.
     """
+    cluster_stats = dash.html.Div(get_cluster_stats(cluster), id="cluster_stats")
     children = [dash.html.Div([dash.html.H2("Cluster Details", style={"padding-top":"0.3em"})], id="details_title"),
-                get_cluster_people(cluster),
-                get_cluster_stats(cluster)]
+                get_cluster_people(cluster), cluster_stats]
+                #dash.html.Div(id="cluster_stats")] TODO: Replace the above with this after impelementing the appropriate
+                # callback for get_cluster_stats()
     
     details_div = dash.html.Div(children, id="details", className="container")
     return details_div
 
-def get_cluster_people(cluster):
+def get_cluster_people(cluster=None):
+    """
+    Retrieve the people from the knowledge graph connected to the currently selected cluster,
+    then render the associated HTML elements based on the retrieved data.
+
+    TODO: Implement this function - may want to separate this into separate functions to retrieve
+    both congresspeople and lobbyists for a given cluster as well as to render the HTML elements.
+
+    Currently uses dummy data in the form of lists of strings (congresspeople and lobbyists).
+    """
     people_elements = [dash.html.H2("Cluster Members")]
     # Congress members
     people_elements.append(dash.html.H3("Members"))
@@ -214,7 +268,13 @@ def get_cluster_people(cluster):
     people = dash.html.Div(people_elements, id="people")
     return people
 
-def get_member_parties():
+def get_member_parties(cluster=None):
+    """
+    Retrieve statistics about the parties of members in the currently selected cluster,
+    then render the associated HTML elements based on the retrieved data.
+
+    TODO: Implement this function
+    """
     number_cluster_members = 10
     percent_dem = 0
     percent_rep = 0
@@ -228,7 +288,13 @@ def get_member_parties():
     ]
     return party_elements
 
-def get_common_topics():
+def get_common_topics(cluster=None):
+    """
+    Retrieve statistics about the parties of members in the currently selected cluster,
+    then render the associated HTML elements based on the retrieved data.
+
+    TODO: Implement this function
+    """
     example_topics = {"Health":0.45, "Families":0.231, "Taxation":0.895}
     topic_elements = [
         dash.html.H4("Common Legislation Topics")
@@ -239,6 +305,12 @@ def get_common_topics():
     return topic_elements
 
 def get_common_committees():
+    """
+    Retrieve statistics about the committees with members in the currently selected cluster,
+    then render the associated HTML elements based on the retrieved data.
+
+    TODO: Implement this function
+    """
     example_committees = {"Appropriations": 10, "Ethics": 5, "Homeland Security": 3}
     committee_elements = [
         dash.html.H4("Common Subcommittees")
@@ -248,21 +320,67 @@ def get_common_committees():
         committee_elements.append(dash.html.P(f"{example_committees[c]} committee members"))
     return committee_elements
 
-def get_cluster_stats(cluster):
+#@app.callback(
+#   TODO: Implement this callback function- should take in the currently selected (clicked) cluster and render
+#   the appropriate details in each of its child elements (the three Divs: member_parties, common_topics,
+#   and common_committees)
+#   
+#   Output("cluster_stats", "children"),
+#   Input()
+#)
+def get_cluster_stats(cluster=None):
+    """
+    Retrieves the HTML elements containing data on a clusters' members, the common legislation topics in the cluster
+    and the most common subcomittees in the cluster
+
+    Parameters
+    ---
+    cluster - to be implemented
+
+    Returns
+    ---
+    div_list - a list of 3 dash.html.Div elements containing the data listed above, updated dynamically
+    based on user input.
+    """
     member_parties = dash.html.Div(get_member_parties(), id="member_parties")
     common_topics = dash.html.Div(get_common_topics(), id="common_topics")
     common_committees = dash.html.Div(get_common_committees(), id="common_committees")
-    return dash.html.Div([member_parties, common_topics, common_committees], id="cluster_stats")
+    return [member_parties, common_topics, common_committees]
 
 # Render the page structure
 
-def render_parent_container(graph_data=None):
+def render_parent_container():
+    """
+    Renders the HTML elements of the parent_container Div element on load
+
+    Parameters
+    ---
+    None
+
+    Returns
+    ---
+    topic_graph - a dash.html.Div element containing the topic graph related HTML elements on the page
+
+    communities - a dash.html.Div element containing the 
+    """
     topic_graph = dash.html.Div(id="topics", className="container")
     communities = render_community_graph()
     details = render_community_details()
     return topic_graph, communities, details
 
-def render_layout() -> None:
+def render_layout():
+    """
+    Renders the HTML elements of the page on load
+
+    Parameters
+    ---
+    None
+
+    Returns
+    ---
+    main_container - a dash.html.Div element containing a list of child
+    elements with all other elements in the app.
+    """
     return dash.html.Div([
         dash.dcc.Store(id="topic_graph_data", data=None),
         # Banner for top of the page
