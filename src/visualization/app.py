@@ -17,13 +17,17 @@ def show_instructions():
 
 # --- Topic Graph Rendering ---
 
-test_graph = [
-    {'data': {'id': 'one', 'label': 'Node 1'}},
-    {'data': {'id': 'two', 'label': 'Node 2'}},
-    {'data': {'source': 'one', 'target': 'two'}}
+party_colors = ["#092573", "#250973", "#500973", "#730950", "#8f0303"]
+
+test_clusters = [
+    {'data': {'id': 'one', 'label': 'Node 1', 'size':30, 'color':party_colors[0]}},
+    {'data': {'id': 'two', 'label': 'Node 2', 'size':40, 'color':party_colors[1]}},
+    {'data': {'id': 'three', 'label': 'Node 3', 'size':80, 'color':party_colors[2]}},
+    {'data': {'id': 'four', 'label': 'Node 4', 'size':65, 'color':party_colors[3]}}
 ]
 
 topic_graph_fp = "./data/topics/"
+
 topics = ["Families", "Health", "Taxation", "Energy", "Economics and public finance"]
 
 @app.callback(
@@ -73,7 +77,7 @@ def render_topic_graph(graph_data):
     """
     graph = cyto.Cytoscape(
         elements=graph_data,
-        style={'width': '100%', 'height': '100%'},
+        style={'width': '100%', 'height': '90%'},
         layout={
             'name': 'cose'
         },
@@ -81,15 +85,17 @@ def render_topic_graph(graph_data):
             {
                 'selector':'node',
                 'style':{
-                    'background-color' :'#6A6A6A',
-                    'line-color':'#BABABA',
+                    'background-color' :'#DADADA',
+                    'line-color':'#DADADA',
                     'color':'#0096E0'
                 }
             }
         ],
         id="topic_graph"
     )
-    topic_div = dash.html.Div([graph],id="topics", className="container")
+    topic_div = dash.html.Div([
+        dash.html.H2("Topics", className="graph_title"),
+        graph], id="topics", className="container")
     return topic_div
 
 @app.callback(
@@ -119,17 +125,17 @@ def generate_topic_graph_stylesheet(node):
             {
                 'selector':'node',
                 'style':{
-                    'background-color' :'#6A6A6A',
-                    'line-color':'#BABABA',
-                    'color':'#0096E0'
+                    'background-color' :'#DADADA',
+                    'line-color':'#DADADA',
+                    'color':'#000000'
                 }
             }
         ]
     node_hover_style =  {
         "selector": 'node[id = "{}"]'.format(node['id']),
         "style": {
-            'background-color':'#CACACA',
-            'line-color':'#CACACA',
+            'background-color':'#7c7c7c',
+            'line-color':'#7c7c7c',
             'label': 'data(label)',
             'z-index': '999'
         }
@@ -140,27 +146,19 @@ def generate_topic_graph_stylesheet(node):
 
 # --- Cluster Rendering ---
 
-party_colors = ["#b8232d", "#a923b8" "#7523b8", "#4123b8", "#234bb8"] 
-# Interpolate between 5 colors - chosen based on party parameter... goes from red to blue
-# Number of members will impact the size
-#test_clusters = [
-#    {'data': {'id': 0, 'members': 10, 'topic':'Families', 'party': 0.5}},
-#    {'data': {'id': 1, 'members': 15, 'topic':'Families', 'party': 0.2}},
-#    {'data': {'id': 2, 'members': 6, 'topic':'Families', 'party': 0.1}},
-#    {'data': {'id': 3, 'members': 24, 'topic':'Families', 'party': 0.8}}
-#]
-
 def get_party_color(party_polarity):
     # 0 corresponds to 100% republican
     # 1.0 corresponds to 100% democrat
-    color = party_colors[round(party_polarity)]
+    color = party_colors[round(party_polarity * len(party_colors))]
     return color
 
 def render_community_graph():
     """
     Renders the subgraph of communities for the current topic in the knowledge graph
     """
-    community_div = dash.html.Div(id="communities", className="container")
+    community_div = dash.html.Div([
+        dash.html.H2("Topic Clusters", className="graph_title"),
+        get_clusters("Families")], id="communities", className="container")
     return community_div
 
 @app.callback(
@@ -170,7 +168,17 @@ def render_community_graph():
 )
 def get_clusters(topic):
     # To render the clusters, I just made some nodes of various sizes?
-    cluster_graph = cyto.Cytoscape(elements=[], style={'width': '100%', 'height': '100%'},)
+    cluster_graph = cyto.Cytoscape(elements=test_clusters, style={'width': '100%', 'height': '90%'},
+                                    stylesheet=[
+                                        {
+                                            "selector":"node",
+                                            "style":{
+                                                "height":"data(size)",
+                                                "width":"data(size)",
+                                                "background-color":"data(color)"
+                                            }
+                                        }
+                                    ])
     return cluster_graph
 
 def render_community_details():
@@ -178,7 +186,7 @@ def render_community_details():
     Renders community details (lobbyists, legislor relationships) for the currently selected community 
     in the knowledge graph
     """
-    children = [dash.html.H2("Cluster Details")]
+    children = [dash.html.H2("Cluster Details", className="graph_title")]
     
     details_div = dash.html.Div(children, id="details", className="container")
     return details_div
@@ -187,7 +195,7 @@ def render_community_details():
     Output("parent_container", "children"),
     Input("topic_graph_data", "data")
 )
-def render_parent_container(graph_data=test_graph):
+def render_parent_container(graph_data=None):
     topic_graph = render_topic_graph(graph_data)
     communities = render_community_graph()
     details = render_community_details()
@@ -195,7 +203,7 @@ def render_parent_container(graph_data=test_graph):
 
 def render_layout() -> None:
     return dash.html.Div([
-        dash.dcc.Store(id="topic_graph_data", data=test_graph),
+        dash.dcc.Store(id="topic_graph_data", data=None),
         # Banner for top of the page
         dash.html.Div([
             dash.html.H1("REP-G", id="title", className="header_element"), 
