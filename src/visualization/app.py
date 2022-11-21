@@ -181,15 +181,39 @@ def get_clusters(topic):
                                     ])
     return cluster_graph
 
-def render_community_details():
+# --- Get and display cluster details ---
+
+def render_community_details(cluster=None):
     """
     Renders community details (lobbyists, legislor relationships) for the currently selected community 
     in the knowledge graph
     """
-    children = [dash.html.H2("Cluster Details", className="graph_title")]
+    children = [dash.html.Div([dash.html.H2("Cluster Details", style={"padding-top":"0.3em"})], id="details_title"),
+                get_cluster_people(cluster),
+                get_cluster_stats(cluster)]
     
     details_div = dash.html.Div(children, id="details", className="container")
     return details_div
+
+def get_cluster_people(cluster):
+    people_elements = []
+    # Congress members
+    people_elements.append(dash.html.H3("Members"))
+    congresspeople = ["Mitch McConnell", "John Thune"]
+    congress_list = dash.html.Ul([dash.html.Li(p) for p in congresspeople])
+    people_elements.append(congress_list)
+    # Lobbyists
+    people_elements.append(dash.html.H3("Lobbyists"))
+    lobbyists = ["Joe Schmoe", "Sally Bally"]
+    lobbyist_list = dash.html.Ul([dash.html.Li(l) for l in lobbyists])
+    people_elements.append(lobbyist_list)
+    people = dash.html.Div(people_elements, id="people")
+    return people
+
+def get_cluster_stats(cluster):
+    return dash.html.Div(id="cluster_stats")
+
+# Render the page structure
 
 @app.callback(
     Output("parent_container", "children"),
