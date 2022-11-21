@@ -1,0 +1,1 @@
+"""Q6: How likely / to what degree are two members to share a lobbyist?"""

@@ -1,0 +1,1 @@
+"""Q1: What is the distribution of political parties?"""

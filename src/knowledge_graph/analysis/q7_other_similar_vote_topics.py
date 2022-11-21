@@ -1,0 +1,1 @@
+"""Q7: Which (other) topics do the members in the cluster vote similarly on?"""
