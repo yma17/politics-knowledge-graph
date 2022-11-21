@@ -71,6 +71,10 @@ def get_topic_graph_elements(current_topic = "Families"):
     graph = nodes + edges
     return graph
 
+@app.callback(
+    Output("topics", "children"),
+    Input("topic_graph_data", "data")
+)
 def render_topic_graph(graph_data):
     """
     Renders the subgraph containing topics from the knowledge graph
@@ -93,9 +97,9 @@ def render_topic_graph(graph_data):
         ],
         id="topic_graph"
     )
-    topic_div = dash.html.Div([
+    topic_div = [
         dash.html.H2("Topics", className="graph_title"),
-        graph], id="topics", className="container")
+        graph]
     return topic_div
 
 @app.callback(
@@ -196,7 +200,7 @@ def render_community_details(cluster=None):
     return details_div
 
 def get_cluster_people(cluster):
-    people_elements = []
+    people_elements = [dash.html.H2("Cluster Members")]
     # Congress members
     people_elements.append(dash.html.H3("Members"))
     congresspeople = ["Mitch McConnell", "John Thune"]
@@ -210,17 +214,50 @@ def get_cluster_people(cluster):
     people = dash.html.Div(people_elements, id="people")
     return people
 
+def get_member_parties():
+    number_cluster_members = 10
+    percent_dem = 0
+    percent_rep = 0
+    percent_ind = 0
+    party_elements =[
+        dash.html.P(f"Number of members: {number_cluster_members}", id="num_members"),
+        dash.html.H4("Party composition:"),
+        dash.html.P(f"{percent_dem}% Democrat"),
+        dash.html.P(f"{percent_rep}% Republican"),
+        dash.html.P(f"{percent_ind}% Independent")
+    ]
+    return party_elements
+
+def get_common_topics():
+    example_topics = {"Health":0.45, "Families":0.231, "Taxation":0.895}
+    topic_elements = [
+        dash.html.H4("Common Legislation Topics")
+    ]
+    for t in example_topics.keys():
+        topic_elements.append(dash.html.P(t))
+        topic_elements.append(dash.html.P(f"Probability of similar voting: {example_topics[t]}"))
+    return topic_elements
+
+def get_common_committees():
+    example_committees = {"Appropriations": 10, "Ethics": 5, "Homeland Security": 3}
+    committee_elements = [
+        dash.html.H4("Common Subcommittees")
+    ]
+    for c in example_committees.keys():
+        committee_elements.append(dash.html.P(c))
+        committee_elements.append(dash.html.P(f"{example_committees[c]} committee members"))
+    return committee_elements
+
 def get_cluster_stats(cluster):
-    return dash.html.Div(id="cluster_stats")
+    member_parties = dash.html.Div(get_member_parties(), id="member_parties")
+    common_topics = dash.html.Div(get_common_topics(), id="common_topics")
+    common_committees = dash.html.Div(get_common_committees(), id="common_committees")
+    return dash.html.Div([member_parties, common_topics, common_committees], id="cluster_stats")
 
 # Render the page structure
 
-@app.callback(
-    Output("parent_container", "children"),
-    Input("topic_graph_data", "data")
-)
 def render_parent_container(graph_data=None):
-    topic_graph = render_topic_graph(graph_data)
+    topic_graph = dash.html.Div(id="topics", className="container")
     communities = render_community_graph()
     details = render_community_details()
     return topic_graph, communities, details
@@ -237,7 +274,7 @@ def render_layout() -> None:
             dash.html.P("About", className="header_element", id="about")],
             id="banner"),
         # Main container that holds each of the main application views
-        dash.html.Div([], id="parent_container"),
+        dash.html.Div(render_parent_container(), id="parent_container"),
         dash.html.Div(id="footer")
     ], 
     id="main-container")
