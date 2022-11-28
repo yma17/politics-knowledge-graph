@@ -19,18 +19,9 @@ def show_instructions():
 
 # --- Topic Graph Rendering ---
 
-party_colors = ["#092573", "#250973", "#500973", "#730950", "#8f0303"]
-
-test_clusters = [
-    {'data': {'id': 'one', 'label': 'Node 1', 'size':30, 'color':party_colors[0]}},
-    {'data': {'id': 'two', 'label': 'Node 2', 'size':40, 'color':party_colors[1]}},
-    {'data': {'id': 'three', 'label': 'Node 3', 'size':80, 'color':party_colors[2]}},
-    {'data': {'id': 'four', 'label': 'Node 4', 'size':65, 'color':party_colors[3]}}
-]
-
 topic_graph_fp = "./data/topics/"
 
-topics = ["Families", "Health", "Taxation", "Energy", "Economics and public finance"]
+SUBJECTS = ["Government operations and politics", "Finance and financial sector", "Economics and public finance", "Armed forces and national security", "Health"]
 
 @app.callback(
     Output("topic_graph_data", "data"),
@@ -198,21 +189,42 @@ def render_community_graph():
     # TODO: make this function actually use the topic to filter and retrieve data
     Output("communities", "children"),
     Input("topic_dropdown", "value"),
-    prevent_initial_call=True
+    Input("topic_graph", "tapNodeData"),
+    prevent_initial_call = True # Prevents us from getting an error message while the topic graph loads
 )
-def get_clusters(topic=None):
+def get_clusters(subject=SUBJECTS[0], topic={"label":"Government employee pay"}):
     """
-    Retrieves the cluster data from the backend for the selected topic.
+    Retrieves the cluster data from the backend for the selected topic, then formats it and returns a Cytoscape graph with the appropriate styling
+    to represent the clusters.
 
     Parameters
     ---
+    subject - The current subject selected from the topic_dropdown as a string
+        Ex. "Health"
 
-    TODO: Implement this function
-    It should retrieve stored cluster data and format it to have the required data keys given in the
-    stylesheet (size, color).
+    topic - The most recently clicked topic in the topic graph in a dictionary format representing that node's data
+        Ex. {"id":0, "name":"Medicare"}
     """
+    if subject == None or topic == None:
+        raise PreventUpdate
+    current_topic = topic["label"]
     cluster_elem = [dash.html.H2("Topic Clusters", className="graph_title")]
-    cluster_graph = cyto.Cytoscape(elements=test_clusters, style={'width': '100%', 'height': '90%'},
+    cluster_df = pd.read_csv("./data/clusters/viz_clusters.csv")
+    all_clusters = cluster_df.columns
+    # Determine which column to use for the clusters' sizes and colors
+    size, color = None, None
+    for c in all_clusters:
+        if current_topic in c:
+            if subject in c:
+                if "size" in c:
+                    size = c
+                if "color" in c:
+                    color = c
+    # Use this until we have an updated topic graph that does not include topics we didn't analyze
+    if size == None:
+        raise PreventUpdate
+    ctyo_elements = [{"data":{"id":str(i), "size":cluster_df[size].iloc[i], "color": cluster_df[color].iloc[i]}} for i in range(cluster_df.shape[0])]
+    cluster_graph = cyto.Cytoscape(elements=ctyo_elements, style={'width': '100%', 'height': '90%'},
                                     stylesheet=[
                                         {
                                             "selector":"node",
@@ -387,7 +399,7 @@ def render_layout():
         dash.html.Div([
             dash.html.H1("REP-G", id="title", className="header_element"), 
             dash.html.P("Select a topic to learn more!", className="header_element"),
-            dash.dcc.Dropdown(topics, topics[0], id="topic_dropdown"),
+            dash.dcc.Dropdown(SUBJECTS, SUBJECTS[0], id="topic_dropdown"),
             dash.html.P("Help", className="header_element", id="help"),
             dash.html.P("About", className="header_element", id="about")],
             id="banner"),
