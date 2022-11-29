@@ -1,4 +1,7 @@
 """Q4: What are the most important subcommittees?"""
+
+exit(1)  # (currently) not needed for visualization
+
 from get_subgraph import get_subgraph
 import dgl
 import pandas as pd

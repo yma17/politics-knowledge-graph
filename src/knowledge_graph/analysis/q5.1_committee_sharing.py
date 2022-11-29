@@ -1,4 +1,7 @@
 """Q5: How likely / to what degree are two members to share a committee?"""
+
+exit(1)  # (currently) not needed for visualization
+
 from get_subgraph import get_subgraph
 import dgl
 import pandas as pd
