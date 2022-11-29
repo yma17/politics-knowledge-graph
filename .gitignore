@@ -2,3 +2,6 @@
 */*/__pycache__/*
 */__pycache__/*
 *.pyc
+src/knowledge_graph/.DS_Store
+src/.DS_Store
+.DS_Store
