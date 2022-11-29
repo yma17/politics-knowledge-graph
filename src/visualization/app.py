@@ -1,5 +1,7 @@
 import dash
 import dash_cytoscape as cyto
+import plotly.express as px
+import plotly.graph_objects as go
 from dash.dependencies import Output, Input, State
 from dash.exceptions import PreventUpdate
 
@@ -108,6 +110,17 @@ def render_topic_graph(graph_data) -> list:
     return topic_div
 
 @app.callback(
+    Output("current_subtopic", "data"),
+    Input("topic_graph", "tapNodeData")
+)
+def store_current_subtopic(click):
+    """
+    Store the currently clicked topic node data in the dcc.Store element
+    with the id indicated above for future use.
+    """
+    return click
+
+@app.callback(
     Output("topic_graph", "stylesheet"),
     Input("topic_graph", "mouseoverNodeData"),
     prevent_initial_call=True
@@ -214,25 +227,46 @@ def get_clusters(subject=SUBJECTS[0], topic={"label":"Government employee pay"})
                 if "color" in c:
                     color = c
     # Use this until we have an updated topic graph that does not include topics we didn't analyze
+    clusters = cluster_df[[size, color]]
+    total_num_people = cluster_df[size].sum()
+    #clusters = clusters.append({size: total_num_people, color:"#000000"}, ignore_index=True).reset_index(drop=True)
+    clusters = pd.concat([clusters, pd.Series(range(clusters.shape[0]))], axis=1)
     if size == None:
         raise PreventUpdate
-    ctyo_elements = [{"data":{"id":str(i), "size":cluster_df[size].iloc[i], "color": cluster_df[color].iloc[i]}} for i in range(cluster_df.shape[0])]
-    cluster_graph = cyto.Cytoscape(elements=ctyo_elements, style={'width': '100%', 'height': '90%'},
-                                    stylesheet=[
-                                        {
-                                            "selector":"node",
-                                            "style":{
-                                                "height":"data(size)",
-                                                "width":"data(size)",
-                                                "background-color":"data(color)"
-                                            }
-                                        }
-                                    ])
-    cluster_elem.append(cluster_graph)
+    cluster_pie = go.Figure(data=go.Pie(labels=clusters[0], values=clusters[size], text=clusters[0], hovertemplate="Cluster %{text}" + "<br>Number of Members: %{value}</br>",
+                                    marker_colors=clusters[color]))
+    pie_comp = dash.dcc.Graph(figure=cluster_pie, style={"height":"80%","width":"100%"}, id="cluster_pie")
+    cluster_elem.append(pie_comp)
     return cluster_elem
+
+#@app.callback(
+#    Output("footer", "children"),
+#    Input("topic_dropdown", "value"),
+#    Input("current_subtopic", "data"),
+#    Input("cluster_pie", "clickData")
+#)
+def get_current_cluster(topic, subtopic, cluster):
+    """
+    Takes in raw data from Dash callbacks for the topic dropdown, topic/subtopic graph, 
+    and cluster pie chart, then formats them into a tuple ihe following format:
+
+    (topic: str, subtopic: str, cluster: int)
+    """
+    if subtopic != None:
+        subtopic = subtopic["label"]
+    if cluster != None:
+        cluster = int(cluster["points"][0]["label"])
+    return (topic, subtopic, cluster)
+
 # --- Get and display cluster details ---
 
-def render_community_details(cluster=None):
+@app.callback(
+    Output("details", "children"),
+    Input("topic_dropdown", "value"),
+    Input("current_subtopic", "data"),
+    Input("cluster_pie", "clickData")
+)
+def render_community_details(topic, subtopic, cluster=None):
     """
     Renders community details (lobbyists, legislor relationships) for the currently selected community 
     in the knowledge graph
@@ -240,16 +274,15 @@ def render_community_details(cluster=None):
     TODO: Implement functions to retrieve appropriate data/statistics (get_cluster_people() and get_cluster_stats())
     Currently these just have placeholder/dummy data.
     """
+    topic, subtopic, cluster = get_current_cluster(topic, subtopic, cluster)
     cluster_stats = dash.html.Div(get_cluster_stats(cluster), id="cluster_stats")
     children = [dash.html.Div([dash.html.H2("Cluster Details", style={"padding-top":"0.3em"})], id="details_title"),
-                get_cluster_people(cluster), cluster_stats]
+                get_cluster_people(), cluster_stats]
                 #dash.html.Div(id="cluster_stats")] TODO: Replace the above with this after impelementing the appropriate
                 # callback for get_cluster_stats()
-    
-    details_div = dash.html.Div(children, id="details", className="container")
-    return details_div
+    return children
 
-def get_cluster_people(cluster=None):
+def get_cluster_people(subject = "Government operations and politics", topic = "Government employee pay", cluster_idx = 0):
     """
     Retrieve the people from the knowledge graph connected to the currently selected cluster,
     then render the associated HTML elements based on the retrieved data.
@@ -257,19 +290,37 @@ def get_cluster_people(cluster=None):
     TODO: Implement this function - may want to separate this into separate functions to retrieve
     both congresspeople and lobbyists for a given cluster as well as to render the HTML elements.
 
-    Currently uses dummy data in the form of lists of strings (congresspeople and lobbyists).
+    Yet to put the callback
     """
     people_elements = [dash.html.H2("Cluster Members")]
     # Congress members
-    people_elements.append(dash.html.H3("Members"))
-    congresspeople = ["Mitch McConnell", "John Thune"]
+    # people_elements.append(dash.html.H3("Members"))
+    
+    subject = "Government operations and politics"
+    topic = "Government employee pay"
+    cluster_idx = 0
+
+    voters_df = pd.read_csv("./data/clusters/voter_clusters.csv")
+    col_cluster = subject + "_ " + topic + "_" + "cluster"
+    voters_df = voters_df[voters_df[col_cluster] == cluster_idx]['voters']
+    voters_df = list(voters_df.str.split("_").str[1]) # Get the member ID
+
+    # Read House data to extract member names from member ids
+    congress_df = pd.read_csv("./data/member_info/house_116.csv")
+    congress_df = congress_df[congress_df['id'].isin(voters_df)]
+    congress_df['full_name'] = congress_df['first_name'] + ' ' + congress_df['last_name']
+    congress_df = congress_df['full_name']
+
+    congresspeople = congress_df.sample(n=10).tolist()
+    # congresspeople = ["Mitch McConnell", "John Thune"]
     congress_list = dash.html.Ul([dash.html.Li(p) for p in congresspeople])
     people_elements.append(congress_list)
+    
     # Lobbyists
-    people_elements.append(dash.html.H3("Lobbyists"))
-    lobbyists = ["Joe Schmoe", "Sally Bally"]
-    lobbyist_list = dash.html.Ul([dash.html.Li(l) for l in lobbyists])
-    people_elements.append(lobbyist_list)
+    # people_elements.append(dash.html.H3("Lobbyists"))
+    # lobbyists = ["Joe Schmoe", "Sally Bally"]
+    # lobbyist_list = dash.html.Ul([dash.html.Li(l) for l in lobbyists])
+    # people_elements.append(lobbyist_list)
     people = dash.html.Div(people_elements, id="people")
     return people
 
@@ -370,7 +421,7 @@ def render_parent_container():
     """
     topic_graph = dash.html.Div(id="topics", className="container")
     communities = render_community_graph()
-    details = render_community_details()
+    details = dash.html.Div([], id="details", className="container")
     return topic_graph, communities, details
 
 def render_layout():
@@ -388,6 +439,7 @@ def render_layout():
     """
     return dash.html.Div([
         dash.dcc.Store(id="topic_graph_data", data=None),
+        dash.dcc.Store(id="current_subtopic", data=None),
         # Banner for top of the page
         dash.html.Div([
             dash.html.H1("REP-G", id="title", className="header_element"), 
