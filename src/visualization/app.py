@@ -45,7 +45,7 @@ def get_topic_graph_elements(current_topic = "Families"):
     """
     if current_topic is None:
         raise PreventUpdate
-    edge_df = pd.read_csv(topic_graph_fp + "subject_topic_full_edges.tsv", sep="\t")
+    edge_df = pd.read_csv(topic_graph_fp + "filtered_sub_top.csv")
     topic_df = edge_df[edge_df["top_name"] == current_topic]
     topic_nid = topic_df["top_nid"].iloc[0]
     nodes = [{'data': {'id': str(topic_nid), 'label': current_topic}}]
@@ -57,11 +57,11 @@ def get_topic_graph_elements(current_topic = "Families"):
             break
         # Creates nodes in the following format:
         # {'data': {'id': 'one', 'label': 'Node 1'}}
-        node = {"data": {"id": str(row[1]), "label": row[3]}}
+        node = {"data": {"id": str(row[2]), "label": row[4]}}
         nodes.append(node)
         # Creates edges in the following format:
         # {'data': {'source': 'one', 'target': 'two'}}
-        edge = {'data': {'source': str(row[1]), 'target': str(row[2])}}
+        edge = {'data': {'source': str(row[2]), 'target': str(row[3])}}
         edges.append(edge)
     graph = nodes + edges
     return graph
@@ -160,13 +160,6 @@ def generate_topic_graph_stylesheet(node) -> list:
     return default_stylesheet
 
 # --- Cluster Rendering ---
-
-def get_party_color(party_polarity):
-    # 0 corresponds to 100% republican
-    # 1.0 corresponds to 100% democrat
-    color = party_colors[round(party_polarity * len(party_colors))]
-    return color
-
 def render_community_graph():
     """
     Renders the subgraph of communities (clusters) for the current topic in the knowledge graph
