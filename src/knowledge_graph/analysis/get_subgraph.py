@@ -15,6 +15,7 @@ def get_subgraph(g, start_node_ids, valid_edge_types):
 
 if __name__ == '__main__':
     (g,), _ = dgl.load_graphs('../../../data/graph.dgl')
+    
     start_node_ids = {'member': [0, 1, 2, 3, 4]}
     valid_edge_types = [
         ('member', 'memberof', 'committee'),
