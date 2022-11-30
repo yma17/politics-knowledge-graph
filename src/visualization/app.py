@@ -12,12 +12,70 @@ app.config.suppress_callback_exceptions=True
 app.title = "REP-G: REpresenting Politics with Graphs"
 server = app.server
 
-def show_instructions():
+@app.callback(
+    Output("instruction_box", "style"),
+    [Input("help", "n_clicks"), Input("markdown_close", "n_clicks")]
+)
+def show_instructions(help_click, close_click):
+    ctx = dash.callback_context.triggered_id
+    if ctx == "help":
+        return {"display": "block"}
+    else:
+        return {"display": "none"}
+
+def render_instructions():
     # TODO: add a popup on load that shows how to use the app
     # so people don't get lost in the multiple layouts
     # See this example from Dash:
     # https://github.com/plotly/dash-sample-apps/blob/main/apps/dash-manufacture-spc-dashboard/app.py
-    return
+    return dash.html.Div([
+        dash.html.Div([
+            dash.html.Div(
+                        className="close-container",
+                        children=dash.html.Button(
+                            "Close",
+                            id="markdown_close",
+                            n_clicks=0,
+                            className="closeButton",
+                        )),
+            dash.html.Div(
+                        className="markdown-text",
+                        children=dash.dcc.Markdown(
+                            children=(
+                                """
+                        # Welcome to REP-G!
+                        This is a dashboard to learn about political behavior in the US House of Representatives. You can click
+                        on various areas of the dashboard to explore politican's voting patterns on different types of legislation,
+                        how they are influenced by lobbyists, and more!
+
+                        ## How to Use this Tool
+                        Choose a general area (topic) to explore using the dropdown on the main menu bar. The "topic graph" shows what more specific areas
+                        of legislation correspond with this topic. Clicking a node in this graph will allow you to explore groups of representatives with similar
+                        behavior (voting patterns) in this area. These groups or "clusters" are shown in the "Topic Cluster" pie chart.
+                        
+                        You can then click each of these clusters (areas in the pie chart) to get more details about the Representatives with those voting patterns, which lobbyists
+                        support them, who tends to sponsor the most bills, and their party makeup.
+                        
+                        ## Source Code
+                        You can find the source code of this app on our [Github repository](https://github.com/yma17/politics-knowledge-graph).
+                    """
+                            )))
+        ], id="instructions")
+        ], className="modal", id="instruction_box")
+
+# @app.callback(
+    #Output("markdown", "style"),
+    #[Input("learn-more-button", "n_clicks"), Input("markdown_close", "n_clicks")],
+#)
+#def update_click_output(button_click, close_click):
+#    ctx = dash.callback_context
+#
+#    if ctx.triggered:
+#        prop_id = ctx.triggered[0]["prop_id"].split(".")[0]
+#        if prop_id == "learn-more-button":
+#            return {"display": "block"}
+#
+#    return {"display": "none"}
 
 # --- Topic Graph Rendering ---
 
@@ -198,7 +256,7 @@ def render_community_graph():
     Input("topic_graph", "tapNodeData"),
     prevent_initial_call = True # Prevents us from getting an error message while the topic graph loads
 )
-def get_clusters(subject=SUBJECTS[0], topic={"label":"Government employee pay"}):
+def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}):
     """
     Retrieves the cluster data from the backend for the selected topic, then formats it and returns a Cytoscape graph with the appropriate styling
     to represent the clusters.
@@ -211,30 +269,18 @@ def get_clusters(subject=SUBJECTS[0], topic={"label":"Government employee pay"})
     topic - The most recently clicked topic in the topic graph in a dictionary format representing that node's data
         Ex. {"id":0, "name":"Medicare"}
     """
-    if subject == None or topic == None:
+    if topic == None or subtopic == None:
         raise PreventUpdate
-    current_topic = topic["label"]
+    subtopic = subtopic["label"]
     cluster_elem = [dash.html.H2("Topic Clusters", className="graph_title")]
+    # Retrieve and filter the data
     cluster_df = pd.read_csv("./data/clusters/viz_clusters.csv")
-    all_clusters = cluster_df.columns
-    # Determine which column to use for the clusters' sizes and colors
-    size, color = None, None
-    for c in all_clusters:
-        if current_topic in c:
-            if subject in c:
-                if "size" in c:
-                    size = c
-                if "color" in c:
-                    color = c
+    top_df = cluster_df[cluster_df["topic"] == topic]
+    sub_df = top_df[top_df["subtopic"] == subtopic]
+    cluster_nums = [i for i in range(sub_df.shape[0])]
     # Use this until we have an updated topic graph that does not include topics we didn't analyze
-    clusters = cluster_df[[size, color]]
-    total_num_people = cluster_df[size].sum()
-    #clusters = clusters.append({size: total_num_people, color:"#000000"}, ignore_index=True).reset_index(drop=True)
-    clusters = pd.concat([clusters, pd.Series(range(clusters.shape[0]))], axis=1)
-    if size == None:
-        raise PreventUpdate
-    cluster_pie = go.Figure(data=go.Pie(labels=clusters[0], values=clusters[size], text=clusters[0], hovertemplate="Cluster %{text}" + "<br>Number of Members: %{value}</br>",
-                                    marker_colors=clusters[color]), layout=go.Layout(paper_bgcolor='#e3ebf0', margin=dict(
+    cluster_pie = go.Figure(data=go.Pie(labels=cluster_nums, values=sub_df["total_members"], text=cluster_nums, hovertemplate="Cluster %{text}" + "<br>Number of Members: %{value}</br>",
+                                    marker_colors=sub_df["color"]), layout=go.Layout(paper_bgcolor='#e3ebf0', margin=dict(
         l=10,
         r=15,
         b=10,
@@ -283,7 +329,7 @@ def render_community_details(topic, subtopic, cluster=None):
     """
     topic, subtopic, cluster = get_current_cluster(topic, subtopic, cluster)
     cluster_stats = dash.html.Div(get_cluster_stats(topic, subtopic, cluster), id="cluster_stats")
-    children = [dash.html.Div([dash.html.H2("Cluster Details", style={"padding-top":"0.3em"})], id="details_title"),
+    children = [dash.html.Div([dash.html.H2(f"Cluster {cluster} Details", style={"padding-top":"0.3em"})], id="details_title"),
                 get_cluster_people(topic, subtopic, cluster), cluster_stats]
                 #dash.html.Div(id="cluster_stats")] TODO: Replace the above with this after impelementing the appropriate
                 # callback for get_cluster_stats()
@@ -436,7 +482,7 @@ def get_common_committees(topic=None, subtopic=None, cluster=None):
         )
     )
     committee_bar= go.Figure(data=go.Bar(x=names, y=count), layout=layout)
-    committee_bar.update_layout(autosize=False, width=400, height=300)
+    committee_bar.update_layout(autosize=False, width=400, height=350)
     committee_elements = [
         dash.html.H4("Common Subcommittees"),
         dash.dcc.Graph(figure=committee_bar, style={"height":"100%", "width":"50%"})
@@ -469,6 +515,19 @@ def get_cluster_stats(topic=None, subtopic=None, cluster=None):
     common_topics = dash.html.Div(get_common_topics(topic, subtopic, cluster), id="common_topics")
     common_committees = dash.html.Div(get_common_committees(topic, subtopic, cluster), id="common_committees")
     return [member_parties, common_topics, common_committees]
+
+@app.callback(
+    Output("current_topic_text", "children"),
+    Input("topic_dropdown", "value"),
+    Input("current_subtopic", "data"),
+    prevent_initial_call=True
+)
+def update_topic_text(topic=None, subtopic=None):
+    if topic == None or subtopic == None:
+        raise PreventUpdate
+    subtopic = subtopic["label"]
+    topic_text = dash.html.P(topic + "- " + subtopic, className="header_element", style={"font-size":"medium"})
+    return topic_text
 
 # Render the page structure
 
@@ -512,14 +571,14 @@ def render_layout():
             dash.html.H1("REP-G", id="title", className="header_element"), 
             dash.html.P("Select a topic to learn more!", className="header_element"),
             dash.dcc.Dropdown(SUBJECTS, SUBJECTS[0], id="topic_dropdown"),
-            dash.html.B("Current topic:"),
-            dash.html.P("test", id="current_topic_text"),
-            dash.html.P("Help", className="header_element", id="help"),
-            dash.html.P("About", className="header_element", id="about")],
+            dash.html.B("Current topic:", className="header_element", style={"padding-left":"1rem"}),
+            dash.html.Div([], id="current_topic_text"),
+            dash.html.P("Help", className="header_element", id="help")],
             id="banner"),
         # Main container that holds each of the main application views
         dash.html.Div(render_parent_container(), id="parent_container"),
-        dash.html.Div(id="footer")
+        dash.html.Div(id="footer"),
+        render_instructions()
     ], 
     id="main-container")
 

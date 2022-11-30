@@ -14,6 +14,10 @@
 
 #title {
     padding-right: 6rem;
+    width: 15rem;
+    padding-left: 2rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
 }
 
 #topics {
@@ -36,12 +40,6 @@
     border-top: 3px solid #000000;
 }
 
-#title {
-    padding-left: 2rem;
-    padding-top: 1rem;
-    padding-bottom: 1rem;
-}
-
 #footer {
     width: 100%;
     background-color: #00283D;
@@ -61,24 +59,30 @@
 }
 
 .header_element {
-   padding-top: 1.5rem; 
+   padding-top: 1rem; 
    padding-right: 1rem;
 }
 
 #topic_dropdown {
     padding-top: 1rem;
     color: #5A5A5A;
-    width: 15%;
+    width: 25rem;
 }
 
 #help {
-    padding-left: 45%;
+    padding-left: 30rem;
+    padding-top: 1.25rem;
+    padding-right: 10rem;
     font-size: large;
+    font-weight: bold;
 }
 
 #about {
     padding-left: 2rem;
+    padding-right: 5rem;
+    padding-top: 1.25rem;
     font-size: large;
+    font-weight: bold;
 }
 
 .graph_title {
@@ -127,11 +131,20 @@
 #common_topics {
     grid-row: 1 / 2;
     grid-column: 2/ 3;
+    text-align: center;
 }
 
 #common_committees {
     grid-row: 1 / 2;
     grid-column: 3 / 4;
+}
+
+#common_committees > * {
+    padding-left: 5rem;
+}
+
+#common_committees > h4 {
+    padding-left: 13rem;
 }
 
 #people {
@@ -154,4 +167,63 @@
 
 #member_title {
     padding-bottom: 1rem;
+}
+
+#current_topic_text {
+    width: 24rem;
+}
+
+.modal {
+    display: none; /*Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1005; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100vw; /* Full width */
+    height: 100vh; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgb(0, 0, 0); /* Fallback color */
+    background-color: rgba(0, 0, 0, 0.4); /* Black w/ opacity */
+}
+
+.modal > * {
+    color: white;
+}
+
+#instructions {
+    width: 60vw;
+    margin: 10% auto;
+    padding: 20px 25px;
+    background-color: #00283D;
+    display: block;
+    border-radius: 4px;
+}
+
+.close-container {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    height: 40px;
+}
+  
+.closeButton {
+    padding: 0 15px;
+    font-weight: normal;
+    float: right;
+    height: 100%;
+    border: none;
+    color: #555;
+}
+  
+.closeButton:hover {
+    color: white;
+}
+
+.markdown-container > h1, h2 {
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.markdown-container > a {
+    color:#e3ebf0;
 }
