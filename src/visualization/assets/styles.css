@@ -1,6 +1,7 @@
 * {
     padding: 0;
     margin: 0;
+    font-family: sans-serif;
 }
 
 #banner {
@@ -89,7 +90,7 @@
 #details {
     display: grid;
     grid-template-rows: 10% 90%;
-    grid-template-columns: 30% 70%;
+    grid-template-columns: 20% 80%;
 }
 
 #details_title {
@@ -109,7 +110,7 @@
     grid-row: 2 / 3;
     grid-column: 2 / 3;
     grid-template-rows: 50% 50%;
-    grid-template-columns: 50% 50%;
+    grid-template-columns: 40% 60%;
 }
 
 #member_parties {
@@ -145,4 +146,12 @@
 
 #people > ul {
     padding-bottom: 10%;
+}
+
+.congress_member {
+    padding-bottom: 0.5rem;
+}
+
+#member_title {
+    padding-bottom: 1rem;
 }

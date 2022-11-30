@@ -252,6 +252,8 @@ def get_current_cluster(topic, subtopic, cluster):
 
     (topic: str, subtopic: str, cluster: int)
     """
+    if topic == None:
+        return ("Government operations and politics", "Government employee pay", 0)
     if subtopic != None:
         subtopic = subtopic["label"]
     if cluster != None:
@@ -275,31 +277,24 @@ def render_community_details(topic, subtopic, cluster=None):
     Currently these just have placeholder/dummy data.
     """
     topic, subtopic, cluster = get_current_cluster(topic, subtopic, cluster)
-    cluster_stats = dash.html.Div(get_cluster_stats(cluster), id="cluster_stats")
+    cluster_stats = dash.html.Div(get_cluster_stats(topic, subtopic, cluster), id="cluster_stats")
     children = [dash.html.Div([dash.html.H2("Cluster Details", style={"padding-top":"0.3em"})], id="details_title"),
-                get_cluster_people(), cluster_stats]
+                get_cluster_people(topic, subtopic, cluster), cluster_stats]
                 #dash.html.Div(id="cluster_stats")] TODO: Replace the above with this after impelementing the appropriate
                 # callback for get_cluster_stats()
     return children
 
 def get_cluster_people(subject = "Government operations and politics", topic = "Government employee pay", cluster_idx = 0):
     """
-    Retrieve the people from the knowledge graph connected to the currently selected cluster,
+    Retrieve the congress people from the knowledge graph connected to the currently selected cluster,
     then render the associated HTML elements based on the retrieved data.
 
-    TODO: Implement this function - may want to separate this into separate functions to retrieve
-    both congresspeople and lobbyists for a given cluster as well as to render the HTML elements.
 
-    Yet to put the callback
     """
-    people_elements = [dash.html.H2("Cluster Members")]
+    people_elements = [dash.html.H2("Cluster Members", id="member_title")]
     # Congress members
-    # people_elements.append(dash.html.H3("Members"))
-    
-    subject = "Government operations and politics"
-    topic = "Government employee pay"
-    cluster_idx = 0
-
+    if topic == None or cluster_idx == None:
+        raise PreventUpdate
     voters_df = pd.read_csv("./data/clusters/voter_clusters.csv")
     col_cluster = subject + "_ " + topic + "_" + "cluster"
     voters_df = voters_df[voters_df[col_cluster] == cluster_idx]['voters']
@@ -312,39 +307,43 @@ def get_cluster_people(subject = "Government operations and politics", topic = "
     congress_df = congress_df['full_name']
 
     congresspeople = congress_df.sample(n=10).tolist()
-    # congresspeople = ["Mitch McConnell", "John Thune"]
-    congress_list = dash.html.Ul([dash.html.Li(p) for p in congresspeople])
+    congress_list = dash.html.Ul([dash.html.Li(p, className="congress_member") for p in congresspeople])
     people_elements.append(congress_list)
-    
-    # Lobbyists
-    # people_elements.append(dash.html.H3("Lobbyists"))
-    # lobbyists = ["Joe Schmoe", "Sally Bally"]
-    # lobbyist_list = dash.html.Ul([dash.html.Li(l) for l in lobbyists])
-    # people_elements.append(lobbyist_list)
+
     people = dash.html.Div(people_elements, id="people")
     return people
 
-def get_member_parties(cluster=None):
+def get_member_parties(topic=None, subtopic=None, cluster=None):
     """
     Retrieve statistics about the parties of members in the currently selected cluster,
     then render the associated HTML elements based on the retrieved data.
 
     TODO: Implement this function
     """
-    number_cluster_members = 10
-    percent_dem = 0
-    percent_rep = 0
-    percent_ind = 0
+    # Retrieve and filter our data
+    member_parties_df = pd.read_csv("./data/results/q1_party_distribution.csv")
+    if subtopic == None or cluster == None:
+        raise PreventUpdate
+    top_df = member_parties_df[member_parties_df["topic"] == topic]
+    sub_df = top_df[top_df["subtopic"] == subtopic]
+
+    # Organize it into a format we can visualize
+    num_dem = sub_df.iloc[cluster]["D"]
+    num_rep = sub_df.iloc[cluster]["R"]
+    num_other = sub_df.iloc[cluster]["I"] + sub_df.iloc[cluster]["ID"]
+    counts = [num_dem, num_rep, num_other]
+    colors = ["blue","red","purple"]
+    parties = ["Democratic","Republican","Independent"]
+
+    party_pie = go.Figure(data=go.Pie(labels=parties, values=counts,
+                                    marker_colors=colors))
     party_elements =[
-        dash.html.P(f"Number of members: {number_cluster_members}", id="num_members"),
         dash.html.H4("Party composition:"),
-        dash.html.P(f"{percent_dem}% Democrat"),
-        dash.html.P(f"{percent_rep}% Republican"),
-        dash.html.P(f"{percent_ind}% Independent")
+        dash.dcc.Graph(figure=party_pie, style={"height":"80%", "width":"80%", "padding-top":"1em"})
     ]
     return party_elements
 
-def get_common_topics(cluster=None):
+def get_common_topics(topic=None, subtopic=None, cluster=None):
     """
     Retrieve statistics about the parties of members in the currently selected cluster,
     then render the associated HTML elements based on the retrieved data.
@@ -353,27 +352,51 @@ def get_common_topics(cluster=None):
     """
     example_topics = {"Health":0.45, "Families":0.231, "Taxation":0.895}
     topic_elements = [
-        dash.html.H4("Common Legislation Topics")
+        dash.html.H4("Common Lobbyists")
     ]
-    for t in example_topics.keys():
-        topic_elements.append(dash.html.P(t))
-        topic_elements.append(dash.html.P(f"Probability of similar voting: {example_topics[t]}"))
+    lobbyist_df = pd.read_csv("./data/results/q3_most_important_lobbyists.csv")
+
+    if subtopic == None or cluster == None:
+        raise PreventUpdate
+    top_df = lobbyist_df[lobbyist_df["topic"] == topic]
+    sub_df = top_df[top_df["subtopic"] == subtopic]
+
+    count = []
+    name = []
+
+    for i in range(1,6):
+        count.append(sub_df.iloc[cluster]["count_rank_" + str(i)])
+        name.append(sub_df.iloc[cluster]["name_rank_" + str(i)])
+
+    topic_bar= go.Figure(data=go.Bar(x=name, y=count))
+    topic_comp = dash.dcc.Graph(figure=topic_bar, style={"height":"80%", "width":"50%"})
+    topic_elements.append(topic_comp)
+
     return topic_elements
 
-def get_common_committees():
+def get_common_committees(topic=None, subtopic=None, cluster=None):
     """
     Retrieve statistics about the committees with members in the currently selected cluster,
     then render the associated HTML elements based on the retrieved data.
 
     TODO: Implement this function
     """
-    example_committees = {"Appropriations": 10, "Ethics": 5, "Homeland Security": 3}
+    committees_df = pd.read_csv("./data/results/q4.1_most_important_committees.csv")
+    if subtopic == None or cluster == None:
+        raise PreventUpdate
+    top_df = committees_df[committees_df["topic"] == topic]
+    sub_df = top_df[top_df["subtopic"] == subtopic]
+    committee = []
+    count = []
+    for i in range(1,4):
+        count.append(sub_df.iloc[cluster]["count_rank_" + str(i)])
+        committee.append(sub_df.iloc[cluster]["name_rank_" + str(i)])
+    # Make text below invisible :)
+    committee_bar= go.Figure(data=go.Bar(x=committee, y=count))
     committee_elements = [
-        dash.html.H4("Common Subcommittees")
+        dash.html.H4("Common Subcommittees"),
+        dash.dcc.Graph(figure=committee_bar, style={"height":"80%", "width":"50%"})
     ]
-    for c in example_committees.keys():
-        committee_elements.append(dash.html.P(c))
-        committee_elements.append(dash.html.P(f"{example_committees[c]} committee members"))
     return committee_elements
 
 #@app.callback(
@@ -384,7 +407,7 @@ def get_common_committees():
 #   Output("cluster_stats", "children"),
 #   Input()
 #)
-def get_cluster_stats(cluster=None):
+def get_cluster_stats(topic=None, subtopic=None, cluster=None):
     """
     Retrieves the HTML elements containing data on a clusters' members, the common legislation topics in the cluster
     and the most common subcomittees in the cluster
@@ -398,9 +421,9 @@ def get_cluster_stats(cluster=None):
     div_list - a list of 3 dash.html.Div elements containing the data listed above, updated dynamically
     based on user input.
     """
-    member_parties = dash.html.Div(get_member_parties(), id="member_parties")
-    common_topics = dash.html.Div(get_common_topics(), id="common_topics")
-    common_committees = dash.html.Div(get_common_committees(), id="common_committees")
+    member_parties = dash.html.Div(get_member_parties(topic, subtopic, cluster), id="member_parties")
+    common_topics = dash.html.Div(get_common_topics(topic, subtopic, cluster), id="common_topics")
+    common_committees = dash.html.Div(get_common_committees(topic, subtopic, cluster), id="common_committees")
     return [member_parties, common_topics, common_committees]
 
 # Render the page structure
@@ -445,6 +468,8 @@ def render_layout():
             dash.html.H1("REP-G", id="title", className="header_element"), 
             dash.html.P("Select a topic to learn more!", className="header_element"),
             dash.dcc.Dropdown(SUBJECTS, SUBJECTS[0], id="topic_dropdown"),
+            dash.html.B("Current topic:"),
+            dash.html.P("test", id="current_topic_text"),
             dash.html.P("Help", className="header_element", id="help"),
             dash.html.P("About", className="header_element", id="about")],
             id="banner"),
