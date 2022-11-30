@@ -88,7 +88,7 @@ def render_topic_graph(graph_data) -> list:
     """
     graph = cyto.Cytoscape(
         elements=graph_data,
-        style={'width': '100%', 'height': '90%'},
+        style={'width': '100%', 'height': '85%'},
         layout={
             'name': 'cose'
         },
@@ -234,7 +234,12 @@ def get_clusters(subject=SUBJECTS[0], topic={"label":"Government employee pay"})
     if size == None:
         raise PreventUpdate
     cluster_pie = go.Figure(data=go.Pie(labels=clusters[0], values=clusters[size], text=clusters[0], hovertemplate="Cluster %{text}" + "<br>Number of Members: %{value}</br>",
-                                    marker_colors=clusters[color]))
+                                    marker_colors=clusters[color]), layout=go.Layout(paper_bgcolor='#e3ebf0', margin=dict(
+        l=10,
+        r=15,
+        b=10,
+        t=10,
+        pad=4)))
     pie_comp = dash.dcc.Graph(figure=cluster_pie, style={"height":"80%","width":"100%"}, id="cluster_pie")
     cluster_elem.append(pie_comp)
     return cluster_elem
@@ -332,11 +337,17 @@ def get_member_parties(topic=None, subtopic=None, cluster=None):
     num_rep = sub_df.iloc[cluster]["R"]
     num_other = sub_df.iloc[cluster]["I"] + sub_df.iloc[cluster]["ID"]
     counts = [num_dem, num_rep, num_other]
-    colors = ["blue","red","purple"]
+    colors = ["#092573","#8F0303","#500973"]
     parties = ["Democratic","Republican","Independent"]
 
     party_pie = go.Figure(data=go.Pie(labels=parties, values=counts,
-                                    marker_colors=colors))
+                                    marker_colors=colors), layout=go.Layout(paper_bgcolor='#fff1f1', margin=dict(
+        l=10,
+        r=15,
+        b=10,
+        t=10,
+        pad=4
+    )))
     party_elements =[
         dash.html.H4("Party composition:"),
         dash.dcc.Graph(figure=party_pie, style={"height":"80%", "width":"80%", "padding-top":"1em"})
@@ -368,8 +379,24 @@ def get_common_topics(topic=None, subtopic=None, cluster=None):
         count.append(sub_df.iloc[cluster]["count_rank_" + str(i)])
         name.append(sub_df.iloc[cluster]["name_rank_" + str(i)])
 
-    topic_bar= go.Figure(data=go.Bar(x=name, y=count))
-    topic_comp = dash.dcc.Graph(figure=topic_bar, style={"height":"80%", "width":"50%"})
+    layout = go.Layout(
+        xaxis=dict(
+            showticklabels=False
+        ),
+        margin=dict(
+        l=10,
+        r=15,
+        b=10,
+        t=10,
+        pad=4),
+        paper_bgcolor='#fff1f1',
+        yaxis=dict(
+            title_text="Number of Members"
+        )
+    )
+    topic_bar= go.Figure(data=go.Bar(x=name, y=count), layout=layout)
+    topic_bar.update_layout(autosize=False, width=400, height=300)
+    topic_comp = dash.dcc.Graph(figure=topic_bar)
     topic_elements.append(topic_comp)
 
     return topic_elements
@@ -391,11 +418,28 @@ def get_common_committees(topic=None, subtopic=None, cluster=None):
     for i in range(1,4):
         count.append(sub_df.iloc[cluster]["count_rank_" + str(i)])
         committee.append(sub_df.iloc[cluster]["name_rank_" + str(i)])
-    # Make text below invisible :)
-    committee_bar= go.Figure(data=go.Bar(x=committee, y=count))
+    names = [c[13:] for c in committee]
+    layout = go.Layout(
+        xaxis=dict(
+            tickfont=dict(size=9),
+            title_text="Committee Name"
+        ),
+        margin=dict(
+        l=10,
+        r=15,
+        b=10,
+        t=10,
+        pad=4),
+        paper_bgcolor='#fff1f1',
+        yaxis=dict(
+            title_text="Number of Members"
+        )
+    )
+    committee_bar= go.Figure(data=go.Bar(x=names, y=count), layout=layout)
+    committee_bar.update_layout(autosize=False, width=400, height=300)
     committee_elements = [
         dash.html.H4("Common Subcommittees"),
-        dash.dcc.Graph(figure=committee_bar, style={"height":"80%", "width":"50%"})
+        dash.dcc.Graph(figure=committee_bar, style={"height":"100%", "width":"50%"})
     ]
     return committee_elements
 
