@@ -24,10 +24,9 @@ def show_instructions(help_click, close_click):
         return {"display": "none"}
 
 def render_instructions():
-    # TODO: add a popup on load that shows how to use the app
-    # so people don't get lost in the multiple layouts
-    # See this example from Dash:
-    # https://github.com/plotly/dash-sample-apps/blob/main/apps/dash-manufacture-spc-dashboard/app.py
+    """
+    Renders a modal with instructions on how to use the app
+    """
     return dash.html.Div([
         dash.html.Div([
             dash.html.Div(
@@ -62,20 +61,6 @@ def render_instructions():
                             )))
         ], id="instructions")
         ], className="modal", id="instruction_box")
-
-# @app.callback(
-    #Output("markdown", "style"),
-    #[Input("learn-more-button", "n_clicks"), Input("markdown_close", "n_clicks")],
-#)
-#def update_click_output(button_click, close_click):
-#    ctx = dash.callback_context
-#
-#    if ctx.triggered:
-#        prop_id = ctx.triggered[0]["prop_id"].split(".")[0]
-#        if prop_id == "learn-more-button":
-#            return {"display": "block"}
-#
-#    return {"display": "none"}
 
 # --- Topic Graph Rendering ---
 
@@ -335,30 +320,32 @@ def render_community_details(topic, subtopic, cluster=None):
                 # callback for get_cluster_stats()
     return children
 
-def get_cluster_people(subject = "Government operations and politics", topic = "Government employee pay", cluster_idx = 0):
+def get_cluster_people(topic = "Government operations and politics", subtopic = "Government employee pay", cluster = 0):
     """
     Retrieve the congress people from the knowledge graph connected to the currently selected cluster,
     then render the associated HTML elements based on the retrieved data.
 
 
     """
-    people_elements = [dash.html.H2("Cluster Members", id="member_title")]
+    people_elements = [dash.html.H2("Most Influential Cluster Members", id="member_title")]
     # Congress members
-    if topic == None or cluster_idx == None:
+    if topic == None or cluster == None:
         raise PreventUpdate
-    voters_df = pd.read_csv("./data/clusters/voter_clusters.csv")
-    col_cluster = subject + "_ " + topic + "_" + "cluster"
-    voters_df = voters_df[voters_df[col_cluster] == cluster_idx]['voters']
-    voters_df = list(voters_df.str.split("_").str[1]) # Get the member ID
 
-    # Read House data to extract member names from member ids
-    congress_df = pd.read_csv("./data/member_info/house_116.csv")
-    congress_df = congress_df[congress_df['id'].isin(voters_df)]
-    congress_df['full_name'] = congress_df['first_name'] + ' ' + congress_df['last_name']
-    congress_df = congress_df['full_name']
+    people_df = pd.read_csv("./data/results/q9_most_influential_members.csv")
+   
+    top_df = people_df[people_df["topic"] == topic]
+    sub_df = top_df[top_df["subtopic"] == subtopic]
 
-    congresspeople = congress_df.sample(n=10).tolist()
-    congress_list = dash.html.Ul([dash.html.Li(p, className="congress_member") for p in congresspeople])
+    li = []
+
+    for i in range(1,6):
+        name = sub_df.iloc[cluster]["name_rank_" + str(i)]
+        count = sub_df.iloc[cluster]["count_rank_" + str(i)]
+        li.append(dash.html.Li(name, className="congress_member"))
+        li.append(dash.html.Li(f"{count} bills sponsored", className="bills_sponsored"))
+
+    congress_list = dash.html.Ul(li, id="congress_list")
     people_elements.append(congress_list)
 
     people = dash.html.Div(people_elements, id="people")
@@ -400,21 +387,26 @@ def get_member_parties(topic=None, subtopic=None, cluster=None):
     ]
     return party_elements
 
-def get_common_topics(topic=None, subtopic=None, cluster=None):
+def get_common_lobbyists(topic=None, subtopic=None, cluster=None):
     """
     Retrieve statistics about the parties of members in the currently selected cluster,
     then render the associated HTML elements based on the retrieved data.
-
-    TODO: Implement this function
     """
-    example_topics = {"Health":0.45, "Families":0.231, "Taxation":0.895}
+    if subtopic == None or cluster == None:
+        raise PreventUpdate
     topic_elements = [
         dash.html.H4("Common Lobbyists")
     ]
-    lobbyist_df = pd.read_csv("./data/results/q3_most_important_lobbyists.csv")
 
-    if subtopic == None or cluster == None:
-        raise PreventUpdate
+    lobbyist_df = pd.read_csv("./data/results/q3_most_important_lobbyists.csv")
+    cluster_df = pd.read_csv("./data/clusters/viz_clusters.csv")
+
+    # We have to retrieve and calculate the cluster size
+    ct_df = cluster_df[cluster_df["topic"] == topic]
+    clusters_df = ct_df[ct_df["subtopic"] == subtopic]
+    total_members = clusters_df[clusters_df["cluster_id"] == cluster]["total_members"]
+    total_members = total_members.iloc[0]
+    
     top_df = lobbyist_df[lobbyist_df["topic"] == topic]
     sub_df = top_df[top_df["subtopic"] == subtopic]
 
@@ -422,7 +414,7 @@ def get_common_topics(topic=None, subtopic=None, cluster=None):
     name = []
 
     for i in range(1,6):
-        count.append(sub_df.iloc[cluster]["count_rank_" + str(i)])
+        count.append(sub_df.iloc[cluster]["count_rank_" + str(i)]/total_members)
         name.append(sub_df.iloc[cluster]["name_rank_" + str(i)])
 
     layout = go.Layout(
@@ -437,7 +429,7 @@ def get_common_topics(topic=None, subtopic=None, cluster=None):
         pad=4),
         paper_bgcolor='#fff1f1',
         yaxis=dict(
-            title_text="Number of Members"
+            title_text="Fraction of Group"
         )
     )
     topic_bar= go.Figure(data=go.Bar(x=name, y=count), layout=layout)
@@ -454,15 +446,25 @@ def get_common_committees(topic=None, subtopic=None, cluster=None):
 
     TODO: Implement this function
     """
-    committees_df = pd.read_csv("./data/results/q4.1_most_important_committees.csv")
     if subtopic == None or cluster == None:
         raise PreventUpdate
+
+    committees_df = pd.read_csv("./data/results/q4.1_most_important_committees.csv")
+    cluster_df = pd.read_csv("./data/clusters/viz_clusters.csv")
+
+    # We have to retrieve and calculate the cluster size
+    ct_df = cluster_df[cluster_df["topic"] == topic]
+    clusters_df = ct_df[ct_df["subtopic"] == subtopic]
+    total_members = clusters_df[clusters_df["cluster_id"] == cluster]["total_members"]
+    total_members = total_members.iloc[0]
+
     top_df = committees_df[committees_df["topic"] == topic]
     sub_df = top_df[top_df["subtopic"] == subtopic]
     committee = []
     count = []
+
     for i in range(1,4):
-        count.append(sub_df.iloc[cluster]["count_rank_" + str(i)])
+        count.append(sub_df.iloc[cluster]["count_rank_" + str(i)]/total_members)
         committee.append(sub_df.iloc[cluster]["name_rank_" + str(i)])
     names = [c[13:] for c in committee]
     layout = go.Layout(
@@ -484,7 +486,7 @@ def get_common_committees(topic=None, subtopic=None, cluster=None):
     committee_bar= go.Figure(data=go.Bar(x=names, y=count), layout=layout)
     committee_bar.update_layout(autosize=False, width=400, height=350)
     committee_elements = [
-        dash.html.H4("Common Subcommittees"),
+        dash.html.H4("Common Committees"),
         dash.dcc.Graph(figure=committee_bar, style={"height":"100%", "width":"50%"})
     ]
     return committee_elements
@@ -512,9 +514,9 @@ def get_cluster_stats(topic=None, subtopic=None, cluster=None):
     based on user input.
     """
     member_parties = dash.html.Div(get_member_parties(topic, subtopic, cluster), id="member_parties")
-    common_topics = dash.html.Div(get_common_topics(topic, subtopic, cluster), id="common_topics")
+    common_lobbyists = dash.html.Div(get_common_lobbyists(topic, subtopic, cluster), id="common_lobbyists")
     common_committees = dash.html.Div(get_common_committees(topic, subtopic, cluster), id="common_committees")
-    return [member_parties, common_topics, common_committees]
+    return [member_parties, common_lobbyists, common_committees]
 
 @app.callback(
     Output("current_topic_text", "children"),
