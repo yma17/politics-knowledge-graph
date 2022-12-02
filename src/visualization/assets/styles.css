@@ -13,17 +13,21 @@
 }
 
 #title {
-    padding-right: 6rem;
-    width: 15rem;
+    padding-right: 3rem;
     padding-left: 2rem;
     padding-top: 1rem;
     padding-bottom: 1rem;
+    font-size: larger;
 }
 
 #topics {
     background-color: #fdfaf4;
     grid-column: 1 / 2;
     grid-row: 1 / 2;
+}
+
+#topics > p {
+    padding-left: 2rem;
 }
 
 #communities {
@@ -59,20 +63,24 @@
 }
 
 .header_element {
-   padding-top: 1rem; 
-   padding-right: 1rem;
+   padding-top: 0.5rem; 
+   width: 100%;
 }
 
 #topic_dropdown {
     padding-top: 1rem;
     color: #5A5A5A;
-    width: 25rem;
+    width: 20rem;
+}
+
+.dash-dropdown {
+    width: 10rem;
 }
 
 #help {
-    padding-left: 30rem;
+    padding-left: 10rem;
     padding-top: 1.25rem;
-    padding-right: 10rem;
+    padding-right: 5rem;
     font-size: large;
     font-weight: bold;
 }
@@ -177,7 +185,7 @@
 }
 
 #current_topic_text {
-    width: 24rem;
+    width: 100%;
 }
 
 .modal {

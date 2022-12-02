@@ -55,6 +55,10 @@ def render_instructions():
                         You can then click each of these clusters (areas in the pie chart) to get more details about the Representatives with those voting patterns, which lobbyists
                         support them, who tends to sponsor the most bills, and their party makeup.
                         
+                        ## The Team
+                        REP-G was created by Christian Clark, Shreyas Verma, Yingchen Ma, Manoj Parmar, and Sanchita Porwal in Fall 2022 for the Georgia Tech
+                        Data and Visual Analytics course (CSE6242). We hope you enjoy using our tool!
+
                         ## Source Code
                         You can find the source code of this app on our [Github repository](https://github.com/yma17/politics-knowledge-graph).
                     """
@@ -64,13 +68,11 @@ def render_instructions():
 
 # --- Topic Graph Rendering ---
 
-topic_graph_fp = "./data/topics/"
-
 SUBJECTS = ["Government operations and politics", "Finance and financial sector", "Economics and public finance", "Armed forces and national security", "Health"]
 
 @app.callback(
     Output("topic_graph_data", "data"),
-    Input("topic_dropdown", "value")
+    Input("current_topic", "data")
 )
 def get_topic_graph_elements(current_topic = "Families"):
     """
@@ -90,7 +92,7 @@ def get_topic_graph_elements(current_topic = "Families"):
     """
     if current_topic is None:
         raise PreventUpdate
-    edge_df = pd.read_csv(topic_graph_fp + "filtered_sub_top.csv")
+    edge_df = pd.read_csv("./data/topics/filtered_sub_top.csv")
     topic_df = edge_df[edge_df["top_name"] == current_topic]
     topic_nid = topic_df["top_nid"].iloc[0]
     nodes = [{'data': {'id': str(topic_nid), 'label': current_topic}}]
@@ -149,8 +151,20 @@ def render_topic_graph(graph_data) -> list:
     )
     topic_div = [
         dash.html.H2("Topics", className="graph_title"),
+        dash.html.P("Hover over the nodes associated with the central topic node and then select a sub-topic for more details.", style={"font-size":"small"}),
         graph]
     return topic_div
+
+@app.callback(
+    Output("current_topic", "data"),
+    Input("topic_dropdown", "value")
+)
+def store_current_topic(value):
+    """
+    Store the currently selected topic from the topic list in the dcc.Store element
+    with the id indicated above for future use.
+    """
+    return value
 
 @app.callback(
     Output("current_subtopic", "data"),
@@ -159,6 +173,17 @@ def render_topic_graph(graph_data) -> list:
 def store_current_subtopic(click):
     """
     Store the currently clicked topic node data in the dcc.Store element
+    with the id indicated above for future use.
+    """
+    return click
+
+@app.callback(
+    Output("current_cluster", "data"),
+    Input("cluster_pie", "clickData")
+)
+def store_current_cluster(click):
+    """
+    Store the currently clicked cluster data in the dcc.Store element
     with the id indicated above for future use.
     """
     return click
@@ -237,8 +262,8 @@ def render_community_graph():
 @app.callback(
     # TODO: make this function actually use the topic to filter and retrieve data
     Output("communities", "children"),
-    Input("topic_dropdown", "value"),
-    Input("topic_graph", "tapNodeData"),
+    Input("current_topic", "data"),
+    Input("current_subtopic", "data"),
     prevent_initial_call = True # Prevents us from getting an error message while the topic graph loads
 )
 def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}):
@@ -257,13 +282,14 @@ def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}
     if topic == None or subtopic == None:
         raise PreventUpdate
     subtopic = subtopic["label"]
-    cluster_elem = [dash.html.H2("Topic Clusters", className="graph_title")]
+    cluster_elem = [dash.html.H2("Subtopic Clusters", className="graph_title"),
+                    dash.html.P("These clusters are determined by politicians' voting patterns for the chosen sub-topic. Please select a cluster for further exploration.", 
+                    style={"font-size":"small", "padding-left":"2rem"})]
     # Retrieve and filter the data
     cluster_df = pd.read_csv("./data/clusters/viz_clusters.csv")
     top_df = cluster_df[cluster_df["topic"] == topic]
     sub_df = top_df[top_df["subtopic"] == subtopic]
     cluster_nums = [i for i in range(sub_df.shape[0])]
-    # Use this until we have an updated topic graph that does not include topics we didn't analyze
     cluster_pie = go.Figure(data=go.Pie(labels=cluster_nums, values=sub_df["total_members"], text=cluster_nums, hovertemplate="Cluster %{text}" + "<br>Number of Members: %{value}</br>",
                                     marker_colors=sub_df["color"]), layout=go.Layout(paper_bgcolor='#e3ebf0', margin=dict(
         l=10,
@@ -271,7 +297,7 @@ def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}
         b=10,
         t=10,
         pad=4)))
-    pie_comp = dash.dcc.Graph(figure=cluster_pie, style={"height":"80%","width":"100%"}, id="cluster_pie")
+    pie_comp = dash.dcc.Graph(figure=cluster_pie, style={"height":"70%","width":"100%"}, id="cluster_pie")
     cluster_elem.append(pie_comp)
     return cluster_elem
 
@@ -300,17 +326,14 @@ def get_current_cluster(topic, subtopic, cluster):
 
 @app.callback(
     Output("details", "children"),
-    Input("topic_dropdown", "value"),
+    Input("current_topic", "data"),
     Input("current_subtopic", "data"),
-    Input("cluster_pie", "clickData")
+    Input("current_cluster", "data")
 )
 def render_community_details(topic, subtopic, cluster=None):
     """
     Renders community details (lobbyists, legislor relationships) for the currently selected community 
     in the knowledge graph
-
-    TODO: Implement functions to retrieve appropriate data/statistics (get_cluster_people() and get_cluster_stats())
-    Currently these just have placeholder/dummy data.
     """
     topic, subtopic, cluster = get_current_cluster(topic, subtopic, cluster)
     cluster_stats = dash.html.Div(get_cluster_stats(topic, subtopic, cluster), id="cluster_stats")
@@ -330,7 +353,7 @@ def get_cluster_people(topic = "Government operations and politics", subtopic = 
     people_elements = [dash.html.H2("Most Influential Cluster Members", id="member_title")]
     # Congress members
     if topic == None or cluster == None:
-        raise PreventUpdate
+        return people_elements
 
     people_df = pd.read_csv("./data/results/q9_most_influential_members.csv")
    
@@ -432,8 +455,8 @@ def get_common_lobbyists(topic=None, subtopic=None, cluster=None):
             title_text="Fraction of Group"
         )
     )
-    topic_bar= go.Figure(data=go.Bar(x=name, y=count), layout=layout)
-    topic_bar.update_layout(autosize=False, width=400, height=300)
+    topic_bar= go.Figure(data=go.Bar(x=name, y=count, marker_color="#756bb1"), layout=layout)
+    topic_bar.update_layout(autosize=False, width=300, height=300)
     topic_comp = dash.dcc.Graph(figure=topic_bar)
     topic_elements.append(topic_comp)
 
@@ -466,7 +489,10 @@ def get_common_committees(topic=None, subtopic=None, cluster=None):
     for i in range(1,4):
         count.append(sub_df.iloc[cluster]["count_rank_" + str(i)]/total_members)
         committee.append(sub_df.iloc[cluster]["name_rank_" + str(i)])
-    names = [c[13:] for c in committee]
+    
+    # We have to check for a string type - if it is NaN then it will be a float
+    # so we can use empty string as a name
+    names = [c[13:] if type(c) == str else "" for c in committee]
     layout = go.Layout(
         xaxis=dict(
             tickfont=dict(size=9),
@@ -480,11 +506,11 @@ def get_common_committees(topic=None, subtopic=None, cluster=None):
         pad=4),
         paper_bgcolor='#fff1f1',
         yaxis=dict(
-            title_text="Number of Members"
+            title_text="Fraction of Group"
         )
     )
-    committee_bar= go.Figure(data=go.Bar(x=names, y=count), layout=layout)
-    committee_bar.update_layout(autosize=False, width=400, height=350)
+    committee_bar= go.Figure(data=go.Bar(x=names, y=count, marker_color="#756bb1"), layout=layout)
+    committee_bar.update_layout(autosize=False, width=300, height=350)
     committee_elements = [
         dash.html.H4("Common Committees"),
         dash.dcc.Graph(figure=committee_bar, style={"height":"100%", "width":"50%"})
@@ -520,15 +546,25 @@ def get_cluster_stats(topic=None, subtopic=None, cluster=None):
 
 @app.callback(
     Output("current_topic_text", "children"),
-    Input("topic_dropdown", "value"),
+    Input("current_topic", "data"),
+    prevent_initial_call=True
+)
+def update_topic_text(topic=None):
+    if topic == None:
+        raise PreventUpdate
+    topic_text = dash.html.P(topic, className="header_element", style={"font-size":"small"})
+    return topic_text
+
+@app.callback(
+    Output("current_subtopic_text", "children"),
     Input("current_subtopic", "data"),
     prevent_initial_call=True
 )
-def update_topic_text(topic=None, subtopic=None):
-    if topic == None or subtopic == None:
+def update_subtopic_text(subtopic=None):
+    if subtopic == None:
         raise PreventUpdate
     subtopic = subtopic["label"]
-    topic_text = dash.html.P(topic + "- " + subtopic, className="header_element", style={"font-size":"medium"})
+    topic_text = dash.html.P(subtopic, className="header_element", style={"font-size":"small"})
     return topic_text
 
 # Render the page structure
@@ -568,13 +604,23 @@ def render_layout():
     return dash.html.Div([
         dash.dcc.Store(id="topic_graph_data", data=None),
         dash.dcc.Store(id="current_subtopic", data=None),
+        dash.dcc.Store(id="current_cluster", data=None),
+        dash.dcc.Store(id="current_topic", data=None),
         # Banner for top of the page
         dash.html.Div([
-            dash.html.H1("REP-G", id="title", className="header_element"), 
-            dash.html.P("Select a topic to learn more!", className="header_element"),
-            dash.dcc.Dropdown(SUBJECTS, SUBJECTS[0], id="topic_dropdown"),
+            dash.html.Div([
+                dash.html.H1("REP-G", id="title", className="header_element")
+                ], style={"width":"100%"}),
+            dash.html.Div([
+                dash.html.P("Select a topic to explore!", className="header_element")
+                ], style={"width":"100%"}),
+            dash.html.Div([
+                dash.dcc.Dropdown(SUBJECTS, SUBJECTS[0], id="topic_dropdown")
+                ],className="dd-container", style={"width":"150%", "padding-left":"1rem"}),
             dash.html.B("Current topic:", className="header_element", style={"padding-left":"1rem"}),
-            dash.html.Div([], id="current_topic_text"),
+            dash.html.Div([], id="current_topic_text", style={"width":"100%"}),
+            dash.html.B("Current subtopic:", className="header_element", style={"padding-left":"1rem"}),
+            dash.html.Div([], id="current_subtopic_text", style={"width":"100%"}),
             dash.html.P("Help", className="header_element", id="help")],
             id="banner"),
         # Main container that holds each of the main application views
