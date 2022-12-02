@@ -288,8 +288,8 @@ def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}
     # Retrieve and filter the data
     cluster_df = pd.read_csv("./data/clusters/viz_clusters.csv")
     top_df = cluster_df[cluster_df["topic"] == topic]
-    sub_df = top_df[top_df["subtopic"] == subtopic]
-    cluster_nums = [i for i in range(sub_df.shape[0])]
+    sub_df = top_df[top_df["subtopic"] == subtopic].iloc[0:3]
+    cluster_nums = [i for i in range(3)]
     cluster_pie = go.Figure(data=go.Pie(labels=cluster_nums, values=sub_df["total_members"], text=cluster_nums, hovertemplate="Cluster %{text}" + "<br>Number of Members: %{value}</br>",
                                     marker_colors=sub_df["color"]), layout=go.Layout(paper_bgcolor='#e3ebf0', margin=dict(
         l=10,
