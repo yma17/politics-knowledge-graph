@@ -186,10 +186,15 @@
 
 #current_topic_text {
     width: 100%;
+    padding-left: 1rem;
 }
 
+#current_subtopic_text {
+    width: 100%;
+    padding-left: 1rem;
+}
 .modal {
-    display: none; /*Hidden by default */
+    display: block; /*Hidden by default */
     position: fixed; /* Stay in place */
     z-index: 1005; /* Sit on top */
     left: 0;

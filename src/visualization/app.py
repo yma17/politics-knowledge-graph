@@ -39,7 +39,8 @@ server = app.server
 
 @app.callback(
     Output("instruction_box", "style"),
-    [Input("help", "n_clicks"), Input("markdown_close", "n_clicks")]
+    [Input("help", "n_clicks"), Input("markdown_close", "n_clicks")],
+    prevent_initial_call=True
 )
 def show_instructions(help_click, close_click):
     ctx = dash.callback_context.triggered_id
@@ -309,7 +310,9 @@ def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}
         raise PreventUpdate
     subtopic = subtopic["label"]
     cluster_elem = [dash.html.H2("Subtopic Clusters", className="graph_title"),
-                    dash.html.P("These clusters are determined by politicians' voting patterns for the chosen sub-topic. Please select a cluster for further exploration.", 
+                    dash.html.P("These clusters are determined by politicians' voting patterns for the chosen sub-topic.", 
+                    style={"font-size":"small", "padding-left":"2rem"}),
+                    dash.html.B("You can click a cluster (section of the pie chart) for further exploration.",
                     style={"font-size":"small", "padding-left":"2rem"})]
     # Retrieve and filter the data
     cluster_df = pd.read_csv("./data/clusters/viz_clusters.csv")
@@ -323,7 +326,7 @@ def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}
         b=10,
         t=10,
         pad=4)))
-    pie_comp = dash.dcc.Graph(figure=cluster_pie, style={"height":"70%","width":"100%"}, id="cluster_pie")
+    pie_comp = dash.dcc.Graph(figure=cluster_pie, style={"height":"65%","width":"100%"}, id="cluster_pie")
     cluster_elem.append(pie_comp)
     return cluster_elem
 
