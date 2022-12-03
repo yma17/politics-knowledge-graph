@@ -7,6 +7,31 @@ from dash.exceptions import PreventUpdate
 
 import pandas as pd
 
+# -- Timing Function -- #
+import time
+import functools
+
+
+def timefunc(func):
+    """Call a function and time its execution."""
+
+    @functools.wraps(func)
+    def time_closure(*args, **kwargs):
+        """
+        The function that will be called by timefunc.
+        
+        Time elapsed is given in seconds.
+        """
+        start = time.perf_counter()
+        result = func(*args, **kwargs)
+        time_elapsed = time.perf_counter() - start
+        print(f"Function: {func.__name__}, Time: {time_elapsed}")
+        return result
+
+    return time_closure
+
+# -- App --
+
 app = dash.Dash(__name__)
 app.config.suppress_callback_exceptions=True
 app.title = "REP-G: REpresenting Politics with Graphs"
@@ -117,6 +142,7 @@ def get_topic_graph_elements(current_topic = "Families"):
     Output("topics", "children"),
     Input("topic_graph_data", "data")
 )
+#@timefunc
 def render_topic_graph(graph_data) -> list:
     """
     Renders the subgraph containing topics from the knowledge graph
@@ -260,15 +286,15 @@ def render_community_graph():
     return community_div
 
 @app.callback(
-    # TODO: make this function actually use the topic to filter and retrieve data
     Output("communities", "children"),
     Input("current_topic", "data"),
     Input("current_subtopic", "data"),
     prevent_initial_call = True # Prevents us from getting an error message while the topic graph loads
 )
+#@timefunc
 def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}):
     """
-    Retrieves the cluster data from the backend for the selected topic, then formats it and returns a Cytoscape graph with the appropriate styling
+    Retrieves the cluster data from the backend for the selected topic, then formats it and returns a plotly Pie graph with the appropriate styling
     to represent the clusters.
 
     Parameters
@@ -307,6 +333,7 @@ def get_clusters(topic=SUBJECTS[0], subtopic={"label":"Government employee pay"}
 #    Input("current_subtopic", "data"),
 #    Input("cluster_pie", "clickData")
 #)
+#@timefunc
 def get_current_cluster(topic, subtopic, cluster):
     """
     Takes in raw data from Dash callbacks for the topic dropdown, topic/subtopic graph, 
@@ -517,14 +544,7 @@ def get_common_committees(topic=None, subtopic=None, cluster=None):
     ]
     return committee_elements
 
-#@app.callback(
-#   TODO: Implement this callback function- should take in the currently selected (clicked) cluster and render
-#   the appropriate details in each of its child elements (the three Divs: member_parties, common_topics,
-#   and common_committees)
-#   
-#   Output("cluster_stats", "children"),
-#   Input()
-#)
+@timefunc
 def get_cluster_stats(topic=None, subtopic=None, cluster=None):
     """
     Retrieves the HTML elements containing data on a clusters' members, the common legislation topics in the cluster
@@ -633,4 +653,4 @@ def render_layout():
 app.layout = render_layout()
 
 if __name__ == '__main__':
-    app.run_server(debug=True)
+    app.run_server(debug=False)
