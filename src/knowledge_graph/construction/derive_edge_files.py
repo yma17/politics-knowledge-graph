@@ -31,41 +31,41 @@ join = os.path.join
 
 
 ### LOAD IN DATA ###
-df_bills_house = pd.read_csv("../../data/house_bills.csv", sep='\x01')
-df_bills_sen = pd.read_csv("../../data/senate_bills.csv", sep='\x01')
+df_bills_house = pd.read_csv("../../../data/house_bills.csv", sep='\x01')
+df_bills_sen = pd.read_csv("../../../data/senate_bills.csv", sep='\x01')
 
-df_topics_house = pd.read_csv("../../data/house_bills_topics_subjects.tsv", sep = "\t")
-df_topics_sen = pd.read_csv("../../data/senate_bills_topics_subjects.tsv", sep = "\t")
+df_topics_house = pd.read_csv("../../../data/house_bills_topics_subjects.tsv", sep = "\t")
+df_topics_sen = pd.read_csv("../../../data/senate_bills_topics_subjects.tsv", sep = "\t")
 
-df_committee_house = pd.read_csv("../../data/house_committees_v2.csv")
-df_committee_sen = pd.read_csv("../../data/senate_committees_v2.csv")
-df_committee_joint = pd.read_csv("../../data/joint_committees.csv")
+df_committee_house = pd.read_csv("../../../data/house_committees_v2.csv")
+df_committee_sen = pd.read_csv("../../../data/senate_committees_v2.csv")
+df_committee_joint = pd.read_csv("../../../data/joint_committees.csv")
 
-with open("../../data/house_committee_memberships.json", "r") as f:
+with open("../../../data/house_committee_memberships.json", "r") as f:
     house_cm = json.load(f)
-with open("../../data/senate_committee_memberships.json", "r") as f:
+with open("../../../data/senate_committee_memberships.json", "r") as f:
     senate_cm = json.load(f)
-with open("../../data/joint_committee_memberships.json", "r") as f:
+with open("../../../data/joint_committee_memberships.json", "r") as f:
     joint_cm = json.load(f)
 
 df_lobbyist = pd.concat([
-    pd.read_csv(fname) for fname in glob("../../data/contributions_*.csv")]) # don't use 2021
+    pd.read_csv(fname) for fname in glob("../../../data/contributions_*.csv")]) # don't use 2021
 
-df_member_house = pd.read_csv("../../data/house_116.csv")
-df_member_sen = pd.read_csv("../../data/senate_116.csv")
+df_member_house = pd.read_csv("../../../data/house_116.csv")
+df_member_sen = pd.read_csv("../../../data/senate_116.csv")
 
-df_vote_house = pd.read_csv("../../data/house_votes.csv", dtype=str)
+df_vote_house = pd.read_csv("../../../data/house_votes.csv", dtype=str)
 df_vote_house['number'] = df_vote_house['number'].astype(int)
 df_vote_house['session'] = df_vote_house['session'].astype(int)
 df_vote_house = df_vote_house[df_vote_house["session"] != 2021] # filter out 2021
 df_vote_house = df_vote_house.sort_values(by=["session", "number"])
-df_vote_sen = pd.read_csv("../../data/senate_votes.csv", dtype=str)
+df_vote_sen = pd.read_csv("../../../data/senate_votes.csv", dtype=str)
 df_vote_sen['number'] = df_vote_sen['number'].astype(int)
 df_vote_sen['session'] = df_vote_sen['session'].astype(int)
 df_vote_sen = df_vote_sen[df_vote_sen["session"] != 2021] # filter out 2021
 df_vote_sen = df_vote_sen.sort_values(by=["session", "number"])
 
-df_node = pd.read_csv("../../data/nodes.csv")
+df_node = pd.read_csv("../../../data/nodes.csv")
 
 
 ### INITIALIZE HELPER VARIABLES / FUNCTIONS
@@ -97,7 +97,7 @@ def find_matching_str(str_list, query_str, tol=np.inf):
 
 
 ### DERIVE EDGE FILES ###
-EDGE_PATH = "../../data/edges"
+EDGE_PATH = "../../../data/edges"
 Path(EDGE_PATH).mkdir(parents=True, exist_ok=True)
 
 # Member -> [a member of ] -> Political party

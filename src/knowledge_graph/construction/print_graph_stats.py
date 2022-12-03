@@ -10,7 +10,7 @@ lines_to_print_node, lines_to_print_edge = [], []
 #
 # NODES
 #
-NODE_PATH = "../../data/nodes.csv"
+NODE_PATH = "../../../data/nodes.csv"
 df_node = pd.read_csv(NODE_PATH)
 lines_to_print_node += [f"Number of nodes (total) = {len(df_node)}"]
 lines_to_print_node += [""]
@@ -26,11 +26,18 @@ for ntype in node_types:
 #
 # EDGES
 #
-EDGE_PATH = "../../data/edges"
+EDGE_PATH = "../../../data/edges"
 edge_files = glob(join(EDGE_PATH, "*.csv"))
 edge_files.sort()
 used_node_ids = set()
 used_node_ids_by_ntype = defaultdict(lambda: set())
+dfs_edges = []
+for edge_file in edge_files:
+    df_edge = pd.read_csv(edge_file)
+    dfs_edges.append(df_edge)
+dfs_edges = pd.concat(dfs_edges)
+lines_to_print_edge += [f"Number of edges (total) = {len(dfs_edges)}"]
+lines_to_print_edge += [""]
 for edge_file in tqdm(edge_files):
     filename = edge_file.split("/")[-1][:-4].split("_")
     src_ntype, tgt_ntype = filename[0], filename[2]
