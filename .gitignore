@@ -3,3 +3,6 @@
 */__pycache__/*
 *.pyc
 *.code-workspace
+src/knowledge_graph/.DS_Store
+src/.DS_Store
+.DS_Store
