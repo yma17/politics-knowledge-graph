@@ -20,6 +20,8 @@ If you are familiar with virtual environments, you can skip to the step "Install
 1. conda create -n rep-g
 2. conda activate rep-g
 
+(You might need to install pip after creating the virtual environment - please install if needed. E.g., for Anaconda: conda install pip)
+
 ### Install and run the application
 Run the following commands:
 1. "pip install -r requirements.txt" (NOTE: This may take some time, especially on Anaconda or Windows systems.)
