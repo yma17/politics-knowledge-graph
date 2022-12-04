@@ -19,8 +19,7 @@ If you are familiar with virtual environments, you can skip to the step "Install
 ### Create and activate a virtual environment on Anaconda
 1. conda create -n rep-g
 2. conda activate rep-g
-
-(You might need to install pip after creating the virtual environment - please install if needed. E.g., for Anaconda: conda install pip)
+3. conda install pip
 
 ### Install and run the application
 Run the following commands:
