@@ -22,4 +22,4 @@ Upon opening the app, follow the instructions to use it:
 
 ## DEMO VIDEO
 
-Link: [TODO - insert URL]
+Link: https://youtu.be/p3PS2A4KMX8
