@@ -17,7 +17,7 @@ If you are familiar with virtual environments, you can skip to the step "Install
 2. source rep-g/bin/activate
 
 ### Create and activate a virtual environment on Anaconda
-1. anaconda env create -n rep-g
+1. conda create -n rep-g
 2. conda activate rep-g
 
 ### Install and run the application
