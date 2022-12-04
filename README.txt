@@ -6,11 +6,25 @@ Given a political topic/subtopic, our tool displays various "clusters" (or group
 
 ## INSTALLATION
 
+If you would simply like to view our application, it is available online at: https://rep-g-app-ohzw7utbdq-uk.a.run.app/. You can install the application locally by following the instructions below.
+
+This application uses Python. We recommend creating and using a virtual environment using the following commands in the folder where you have stored REP-G on the command line.
+
+If you are familiar with virtual environments, you can skip to the step "Install and run the application"
+
+### Create and activate a virtual environment for MacOS, WSL, or Linux
+1. python3 -m venv rep-g
+2. source rep-g/bin/activate
+
+### Create and activate a virtual environment on Anaconda
+1. anaconda env create -n rep-g
+
+### Install and run the application
 Run the following commands:
-1. "pip install -r requirements.txt"
+1. "pip install -r requirements.txt" (NOTE: This may take some time, especially on Anaconda or Windows systems.)
 2. "python src/visualization/app.py"
 
-Then, on a browser, navigate to http://127.0.0.1:8050/
+To view the application, navigate to http://127.0.0.1:8050/ in the browser of your choice.
 
 ## EXECUTION
 
